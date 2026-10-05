@@ -71,122 +71,124 @@ export const UsuariosPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
         <div>
-          <h1 className="text-2xl font-extrabold text-white font-['Outfit'] flex items-center gap-2">
-            <Users className="w-6 h-6 text-emerald-400" />
-            Gestión de Usuarios
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] font-space flex items-center gap-3 tracking-tight">
+            <Users className="w-6 h-6 text-[var(--accent-primary)]" strokeWidth={2} />
+            Directorio de atletas y usuarios
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Administra los perfiles de usuario, objetivos físicos y roles en FitLite.
+          <p className="text-xs text-[var(--text-secondary)] font-inter mt-1">
+            Gestión de perfiles, metas físicas y permisos de acceso.
           </p>
         </div>
 
+        {/* Primary Pill Button */}
         <button
           onClick={() => {
             setErrorMessage(null);
             setIsModalOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold hover:from-emerald-400 hover:to-teal-400 shadow-md shadow-emerald-500/20 text-xs transition-all hover:scale-105"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all self-start sm:self-auto font-inter"
         >
-          <UserPlus className="w-4 h-4" />
-          Registrar Usuario
+          <UserPlus className="w-4 h-4" strokeWidth={2.5} />
+          Registrar atleta
         </button>
       </div>
 
       {/* Users Grid */}
       {isLoadingUsers ? (
-        <div className="py-12 text-center text-slate-400 text-xs">Cargando usuarios...</div>
+        <div className="py-12 text-center text-[var(--text-secondary)] text-xs font-inter">Cargando perfiles...</div>
       ) : users.length === 0 ? (
-        <div className="p-12 text-center border border-dashed border-slate-800 rounded-3xl bg-slate-900/40">
-          <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-slate-200">No hay usuarios registrados</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 mb-6">
-            Crea tu primer usuario para empezar a asignar rutinas y registrar entrenamientos.
+        <div className="p-12 text-center border border-dashed border-[var(--border)] rounded-2xl bg-[var(--surface)]">
+          <Users className="w-10 h-10 text-[var(--text-secondary)] mx-auto mb-3" strokeWidth={1.5} />
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] font-space">No hay usuarios registrados</h3>
+          <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto mt-1 mb-5 font-inter">
+            Crea tu primer usuario para empezar a asignar rutinas y registrar sesiones de entrenamiento.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold hover:bg-emerald-500/20"
+            className="px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold font-inter hover:brightness-105 active:scale-95 transition-all"
           >
-            + Registrar Usuario
+            + Registrar primer usuario
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {users.map((u) => {
             const isActive = activeUser?.id === u.id;
             return (
               <div
                 key={u.id}
-                className={`p-5 rounded-2xl bg-slate-900/80 border transition-all relative overflow-hidden flex flex-col justify-between ${
+                className={`p-5 rounded-2xl bg-[var(--surface)] border transition-all relative flex flex-col justify-between ${
                   isActive
-                    ? 'border-emerald-500/60 ring-1 ring-emerald-500/30 shadow-lg shadow-emerald-950/40'
-                    : 'border-slate-800 hover:border-slate-700'
+                    ? 'border-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/50'
+                    : 'border-[var(--border)] hover:border-[var(--border)]/80'
                 }`}
               >
                 {isActive && (
-                  <div className="absolute top-0 right-0 bg-emerald-500 text-slate-950 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-bl-lg tracking-wider">
+                  <div className="absolute top-0 right-0 bg-[var(--accent-primary)] text-[#0D1117] text-[10px] font-bold px-3 py-1 rounded-bl-xl font-space tracking-wide">
                     Activo
                   </div>
                 )}
 
                 <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-base text-emerald-400">
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <div className="w-11 h-11 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--accent-primary)] flex items-center justify-center font-bold text-base font-space">
                       {u.nombre.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white font-['Outfit']">{u.nombre}</h3>
-                      <p className="text-xs text-slate-400 flex items-center gap-1">
-                        <Mail className="w-3 h-3" /> {u.email}
+                      <h3 className="text-sm font-semibold text-[var(--text-primary)] font-space">{u.nombre}</h3>
+                      <p className="text-xs text-[var(--text-secondary)] font-inter flex items-center gap-1.5 mt-0.5">
+                        <Mail className="w-3.5 h-3.5 text-[var(--text-secondary)]" strokeWidth={1.8} />
+                        <span>{u.email}</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-2 py-3 border-y border-slate-800/80 my-3 text-xs">
+                  <div className="space-y-2 py-3 border-y border-[var(--border)] my-3 text-xs font-inter">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1.5">
-                        <Target className="w-3.5 h-3.5 text-purple-400" /> Objetivo:
+                      <span className="text-[var(--text-secondary)] flex items-center gap-1.5">
+                        <Target className="w-3.5 h-3.5 text-[var(--text-secondary)]" strokeWidth={1.8} /> Objetivo:
                       </span>
                       <Badge type="objetivo" value={u.objetivo} />
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" /> Rol:
+                      <span className="text-[var(--text-secondary)] flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-[var(--text-secondary)]" strokeWidth={1.8} /> Rol:
                       </span>
                       <Badge type="rol" value={u.rol} />
                     </div>
                     {u.fechaRegistro && (
-                      <div className="flex items-center justify-between text-[11px] text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> Registrado:
+                      <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-[var(--text-secondary)]" strokeWidth={1.8} /> Alta:
                         </span>
-                        <span>{u.fechaRegistro.slice(0, 10)}</span>
+                        <span className="font-space font-medium tabular-nums">{u.fechaRegistro.slice(0, 10)}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2.5 pt-2">
                   <button
                     onClick={() => setActiveUser(u)}
                     disabled={isActive}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                    className={`flex-1 py-2 px-3 rounded-full text-xs font-semibold font-inter flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
                       isActive
-                        ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/20 cursor-default'
-                        : 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700'
+                        ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border border-[var(--accent-primary)]/40 cursor-default'
+                        : 'bg-[var(--bg-primary)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/40 border border-[var(--border)]'
                     }`}
                   >
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    {isActive ? 'Seleccionado' : 'Usar Perfil'}
+                    <CheckCircle className="w-3.5 h-3.5" strokeWidth={2.5} color={isActive ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
+                    {isActive ? 'Perfil en uso' : 'Usar perfil'}
                   </button>
 
                   <button
                     onClick={() => deleteUsuarioMutation.mutate(u.id)}
-                    className="p-2 rounded-xl bg-slate-800/60 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 border border-slate-700/60 transition-colors"
+                    className="p-2 rounded-full bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 border border-[var(--border)] transition-colors active:scale-95"
                     title="Eliminar usuario"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" strokeWidth={2} />
                   </button>
                 </div>
               </div>
@@ -199,94 +201,104 @@ export const UsuariosPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Crear Nuevo Usuario"
+        title="Registrar nuevo atleta"
       >
         <form onSubmit={handleSubmit((data) => createUsuarioMutation.mutate(data))} className="space-y-4">
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-xs">
+            <div className="p-3 rounded-xl bg-[var(--accent-error)]/10 border border-[var(--accent-error)]/30 text-[var(--accent-error)] text-xs font-inter">
               {errorMessage}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Nombre Completo *</label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Nombre completo *
+            </label>
             <input
               {...register('nombre')}
               placeholder="Ej. Juan Pérez"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
             {errors.nombre && (
-              <p className="text-[11px] text-rose-400 mt-1">{errors.nombre.message}</p>
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errors.nombre.message}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Correo Electrónico *</label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Correo electrónico *
+            </label>
             <input
               type="email"
               {...register('email')}
-              placeholder="juan@ejemplo.com"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+              placeholder="juan@fitlite.com"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
             {errors.email && (
-              <p className="text-[11px] text-rose-400 mt-1">{errors.email.message}</p>
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errors.email.message}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Contraseña *</label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Contraseña de acceso *
+            </label>
             <input
               type="password"
               {...register('password')}
               placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
             {errors.password && (
-              <p className="text-[11px] text-rose-400 mt-1">{errors.password.message}</p>
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errors.password.message}</p>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Objetivo Físico *</label>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1">
+                Objetivo físico *
+              </label>
               <select
                 {...register('objetivo')}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
               >
-                <option value="GANAR_MASA">Ganar Masa</option>
-                <option value="PERDER_PESO">Perder Peso</option>
-                <option value="MANTENER">Mantener</option>
+                <option value="GANAR_MASA">Ganar masa muscular</option>
+                <option value="PERDER_PESO">Perder peso</option>
+                <option value="MANTENER">Mantenimiento</option>
                 <option value="RESISTENCIA">Resistencia</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Rol *</label>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1">
+                Rol de usuario *
+              </label>
               <select
                 {...register('rol')}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
               >
-                <option value="USUARIO">Usuario</option>
+                <option value="USUARIO">Atleta</option>
                 <option value="ENTRENADOR">Entrenador</option>
-                <option value="ADMIN">Admin</option>
+                <option value="ADMIN">Administrador</option>
               </select>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3">
+          <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={createUsuarioMutation.isPending}
-              className="px-5 py-2 rounded-xl bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400 shadow-lg shadow-emerald-500/20"
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
             >
-              {createUsuarioMutation.isPending ? 'Creando...' : 'Crear Usuario'}
+              {createUsuarioMutation.isPending ? 'Creando...' : 'Crear atleta'}
             </button>
           </div>
         </form>

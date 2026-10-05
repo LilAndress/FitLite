@@ -22,7 +22,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <UserProvider>
         <BrowserRouter>
-          <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
+          <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col font-inter">
             <Navbar />
             <main className="flex-1">
               <Routes>
@@ -33,11 +33,13 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
-            <footer className="border-t border-slate-900 bg-slate-950/80 py-6 text-center text-xs text-slate-400">
-              <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-                <p>© {new Date().getFullYear()} FitLite - Todos los derechos reservados.</p>
-                <p className="text-slate-400">
-                  Desarrollado con <span className="text-emerald-400 font-semibold">Spring Boot & React</span>
+            <footer className="border-t border-[var(--border)] bg-[var(--surface)] py-5 text-center text-xs text-[var(--text-secondary)]">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="font-space font-medium text-[var(--text-secondary)]">
+                  FitLite Pro · © {new Date().getFullYear()} Plataforma deportiva inteligente
+                </p>
+                <p className="text-[var(--text-secondary)] font-inter">
+                  Sobrecarga progresiva · <span className="text-[var(--accent-primary)] font-semibold font-space">Spring Boot & React</span>
                 </p>
               </div>
             </footer>

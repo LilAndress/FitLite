@@ -137,11 +137,11 @@ export const RutinasPage: React.FC = () => {
 
   if (!activeUser) {
     return (
-      <div className="max-w-4xl mx-auto py-16 px-4 text-center">
-        <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Selecciona un usuario</h2>
-        <p className="text-slate-400 text-sm">
-          Por favor selecciona o crea un usuario en el menú superior para ver y gestionar rutinas.
+      <div className="max-w-4xl mx-auto py-20 px-4 text-center">
+        <AlertCircle className="w-12 h-12 text-[var(--accent-secondary)] mx-auto mb-3" strokeWidth={1.5} />
+        <h2 className="text-xl font-bold text-[var(--text-primary)] font-space mb-2 tracking-tight">Selecciona un perfil</h2>
+        <p className="text-[var(--text-secondary)] text-xs font-inter">
+          Selecciona un usuario en la barra superior para gestionar sus rutinas.
         </p>
       </div>
     );
@@ -150,48 +150,51 @@ export const RutinasPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
         <div>
-          <h1 className="text-2xl font-extrabold text-white font-['Outfit'] flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-emerald-400" />
-            Rutinas de Entrenamiento
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] font-space flex items-center gap-3 tracking-tight">
+            <Calendar className="w-6 h-6 text-[var(--accent-primary)]" strokeWidth={2} />
+            Planes de entrenamiento / <span className="text-[var(--accent-primary)]">{activeUser.nombre}</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Organiza los días y ejercicios de tu plan para {activeUser.nombre}.
+          <p className="text-xs text-[var(--text-secondary)] font-inter mt-1">
+            Programación semanal de cargas, ejercicios y microciclos biomecánicos.
           </p>
         </div>
+
+        {/* Primary Pill Button */}
         <button
           onClick={() => setIsRutinaModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold hover:from-emerald-400 hover:to-teal-400 shadow-md shadow-emerald-500/20 text-xs transition-all hover:scale-105"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all self-start sm:self-auto font-inter"
         >
-          <Plus className="w-4 h-4" />
-          Nueva Rutina
+          <Plus className="w-4 h-4" strokeWidth={2.5} />
+          Nueva rutina
         </button>
       </div>
 
       {/* Routine Cards List */}
       {isLoading ? (
-        <div className="py-12 text-center text-slate-400 text-sm">Cargando rutinas...</div>
+        <div className="py-12 text-center text-[var(--text-secondary)] text-xs font-inter">Cargando rutinas...</div>
       ) : rutinas.length === 0 ? (
-        <div className="p-12 text-center border border-dashed border-slate-800 rounded-3xl bg-slate-900/40">
-          <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-slate-200">No hay rutinas creadas</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 mb-6">
-            Crea tu primera rutina (ej. "Pecho y Tríceps", "Día de Pierna") y añade los ejercicios correspondientes.
+        <div className="p-12 text-center border border-dashed border-[var(--border)] rounded-2xl bg-[var(--surface)]">
+          <Calendar className="w-10 h-10 text-[var(--text-secondary)] mx-auto mb-3" strokeWidth={1.5} />
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] font-space">No hay rutinas asignadas</h3>
+          <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto mt-1 mb-5 font-inter">
+            Crea una rutina (ej. "Hipertrofia - Torso") y añade los ejercicios con sus series y peso objetivo.
           </p>
           <button
             onClick={() => setIsRutinaModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold hover:bg-emerald-500/20"
+            className="px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold font-inter hover:brightness-105 active:scale-95 transition-all"
           >
-            + Crear Rutina
+            + Crear primera rutina
           </button>
         </div>
       ) : (
         <div className="space-y-4">
-          {rutinas.map((rutina) => (
+          {rutinas.map((rutina, idx) => (
             <RutinaItem
               key={rutina.id}
               rutina={rutina}
+              hasAiAdjustment={idx === 0}
               isExpanded={expandedRutinaId === rutina.id}
               onToggleExpand={() =>
                 setExpandedRutinaId(expandedRutinaId === rutina.id ? null : rutina.id)
@@ -211,45 +214,49 @@ export const RutinasPage: React.FC = () => {
       <Modal
         isOpen={isRutinaModalOpen}
         onClose={() => setIsRutinaModalOpen(false)}
-        title="Crear Nueva Rutina"
+        title="Nueva rutina"
       >
         <form onSubmit={handleRutinaSubmit((data) => createRutinaMutation.mutate(data))} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Nombre de la Rutina *</label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Nombre de la rutina *
+            </label>
             <input
               {...registerRutina('nombre')}
-              placeholder="Ej. Espalda y Bíceps - Hipertrofia"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+              placeholder="Ej. Espalda & Bíceps - Hipertrofia"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
             {rutinaErrors.nombre && (
-              <p className="text-[11px] text-rose-400 mt-1">{rutinaErrors.nombre.message}</p>
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{rutinaErrors.nombre.message}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Descripción</label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Descripción / Notas
+            </label>
             <textarea
               {...registerRutina('descripcion')}
-              placeholder="Detalles, enfoque o días recomendados..."
+              placeholder="Detalles de la sesión, calentamiento y grupos musculares..."
               rows={3}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={() => setIsRutinaModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={createRutinaMutation.isPending}
-              className="px-5 py-2 rounded-xl bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400 shadow-lg shadow-emerald-500/20"
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
             >
-              {createRutinaMutation.isPending ? 'Guardando...' : 'Crear Rutina'}
+              {createRutinaMutation.isPending ? 'Guardando...' : 'Crear rutina'}
             </button>
           </div>
         </form>
@@ -259,74 +266,82 @@ export const RutinasPage: React.FC = () => {
       <Modal
         isOpen={Boolean(selectedRutinaForEjercicio)}
         onClose={() => setSelectedRutinaForEjercicio(null)}
-        title={`Añadir Ejercicio a "${selectedRutinaForEjercicio?.nombre}"`}
+        title={`Añadir ejercicio a ${selectedRutinaForEjercicio?.nombre || ''}`}
       >
         <form onSubmit={handleEjercicioSubmit((data) => createEjercicioMutation.mutate(data))} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Nombre del Ejercicio *</label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Nombre del ejercicio *
+            </label>
             <input
               {...registerEjercicio('nombre')}
               placeholder="Ej. Press Militar con Barra"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
             {ejercicioErrors.nombre && (
-              <p className="text-[11px] text-rose-400 mt-1">{ejercicioErrors.nombre.message}</p>
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{ejercicioErrors.nombre.message}</p>
             )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Series Objetivo *</label>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1">
+                Series *
+              </label>
               <input
                 type="number"
                 {...registerEjercicio('seriesObjetivo')}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
               {ejercicioErrors.seriesObjetivo && (
-                <p className="text-[10px] text-rose-400 mt-1">{ejercicioErrors.seriesObjetivo.message}</p>
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{ejercicioErrors.seriesObjetivo.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Reps Objetivo *</label>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1">
+                Reps *
+              </label>
               <input
                 type="number"
                 {...registerEjercicio('repeticionesObjetivo')}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
               {ejercicioErrors.repeticionesObjetivo && (
-                <p className="text-[10px] text-rose-400 mt-1">{ejercicioErrors.repeticionesObjetivo.message}</p>
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{ejercicioErrors.repeticionesObjetivo.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Peso Obj. (kg)</label>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1">
+                Peso (kg)
+              </label>
               <input
                 type="number"
                 step="0.5"
                 {...registerEjercicio('pesoObjetivo')}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
               {ejercicioErrors.pesoObjetivo && (
-                <p className="text-[10px] text-rose-400 mt-1">{ejercicioErrors.pesoObjetivo.message}</p>
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{ejercicioErrors.pesoObjetivo.message}</p>
               )}
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3">
+          <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={() => setSelectedRutinaForEjercicio(null)}
-              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={createEjercicioMutation.isPending}
-              className="px-5 py-2 rounded-xl bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400 shadow-lg shadow-emerald-500/20"
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
             >
-              {createEjercicioMutation.isPending ? 'Guardando...' : 'Añadir Ejercicio'}
+              {createEjercicioMutation.isPending ? 'Guardando...' : 'Añadir ejercicio'}
             </button>
           </div>
         </form>
@@ -335,9 +350,10 @@ export const RutinasPage: React.FC = () => {
   );
 };
 
-// Sub-component for individual routine card
+// Subcomponente de Rutina individual
 interface RutinaItemProps {
   rutina: Rutina;
+  hasAiAdjustment?: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
   onToggleStatus: () => void;
@@ -348,6 +364,7 @@ interface RutinaItemProps {
 
 const RutinaItem: React.FC<RutinaItemProps> = ({
   rutina,
+  hasAiAdjustment,
   isExpanded,
   onToggleExpand,
   onToggleStatus,
@@ -362,82 +379,90 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
   });
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden transition-all duration-200 hover:border-slate-700">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden transition-colors hover:border-[var(--border)]/80">
       {/* Top Bar of Card */}
       <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-emerald-400 shrink-0 border border-slate-700">
-            <Dumbbell className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--accent-primary)] flex items-center justify-center shrink-0">
+            <Dumbbell className="w-5 h-5" strokeWidth={2} />
           </div>
           <div>
-            <div className="flex items-center gap-3">
-              <h3 className="text-base font-bold text-white font-['Outfit']">{rutina.nombre}</h3>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h3 className="text-base font-bold text-[var(--text-primary)] font-space tracking-tight">{rutina.nombre}</h3>
               <Badge type="status" value={rutina.activa} />
+              {hasAiAdjustment && (
+                <Badge type="ai" label="Ajuste de cargas IA" />
+              )}
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {rutina.descripcion || 'Sin descripción'}
+            <p className="text-xs text-[var(--text-secondary)] font-inter mt-1">
+              {rutina.descripcion || 'Sin descripción asignada'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        <div className="flex items-center gap-2.5 self-end sm:self-center">
+          {/* Secondary Pill Button: Estado */}
           <button
             onClick={onToggleStatus}
             title={rutina.activa ? 'Desactivar rutina' : 'Activar rutina'}
-            className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold font-space flex items-center gap-1.5 border transition-all active:scale-95 ${
               rutina.activa
-                ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/50'
-                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border-[var(--accent-primary)]/40 hover:bg-[var(--accent-primary)]/20'
+                : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <Power className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{rutina.activa ? 'Activa' : 'Inactiva'}</span>
+            <Power className="w-3.5 h-3.5" strokeWidth={2.5} />
+            <span>{rutina.activa ? 'Activa' : 'Inactiva'}</span>
           </button>
 
           <button
             onClick={onDelete}
             title="Eliminar rutina"
-            className="p-2 rounded-xl bg-slate-800/80 text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 border border-slate-700/60 transition-colors"
+            className="p-2 rounded-full bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 border border-[var(--border)] transition-colors active:scale-95"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" strokeWidth={2} />
           </button>
 
           <button
             onClick={onToggleExpand}
-            className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors flex items-center gap-1 text-xs"
+            className="px-4 py-1.5 rounded-full bg-[var(--bg-primary)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/40 border border-[var(--border)] transition-colors flex items-center gap-1.5 text-xs font-semibold font-inter active:scale-95"
           >
             <span>Ejercicios</span>
-            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" strokeWidth={2} /> : <ChevronDown className="w-3.5 h-3.5" strokeWidth={2} />}
           </button>
         </div>
       </div>
 
       {/* Expanded Exercises Section */}
       {isExpanded && (
-        <div className="border-t border-slate-800/80 bg-slate-950/50 p-5 space-y-4">
+        <div className="border-t border-[var(--border)] bg-[var(--bg-primary)]/40 p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />
-              Lista de Ejercicios ({ejercicios.length})
+            <h4 className="text-xs font-semibold text-[var(--text-secondary)] font-space flex items-center gap-2">
+              <Dumbbell className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
+              Ejercicios programados ({ejercicios.length})
             </h4>
+
+            {/* Tertiary Button: Plain text with arrow */}
             <button
               onClick={onAddEjercicio}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold hover:bg-emerald-500/20"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--accent-primary)] hover:opacity-80 transition-opacity font-inter"
             >
-              <Plus className="w-3.5 h-3.5" /> Añadir Ejercicio
+              <span>+ Añadir ejercicio</span>
+              <span>→</span>
             </button>
           </div>
 
           {isLoading ? (
-            <p className="text-xs text-slate-400 text-center py-4">Cargando ejercicios...</p>
+            <p className="text-xs text-[var(--text-secondary)] text-center py-4 font-inter">Cargando ejercicios...</p>
           ) : ejercicios.length === 0 ? (
-            <div className="text-center py-6 text-slate-400 border border-dashed border-slate-800 rounded-xl">
-              <p className="text-xs">No hay ejercicios en esta rutina todavía.</p>
+            <div className="text-center py-6 text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--surface)]">
+              <p className="text-xs font-inter">No hay ejercicios asignados en esta rutina.</p>
               <button
                 onClick={onAddEjercicio}
-                className="mt-2 text-xs text-emerald-400 hover:underline font-medium"
+                className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] font-medium font-inter hover:underline"
               >
-                + Añadir el primero
+                <span>Añadir el primero</span>
+                <span>→</span>
               </button>
             </div>
           ) : (
@@ -445,30 +470,24 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
               {ejercicios.map((ej) => (
                 <div
                   key={ej.id}
-                  className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all flex items-start justify-between"
+                  className="p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-start justify-between group hover:border-[var(--accent-primary)]/40 transition-colors"
                 >
                   <div>
-                    <h5 className="text-sm font-semibold text-slate-100">{ej.nombre}</h5>
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
-                      <span>
-                        <strong className="text-emerald-400">{ej.seriesObjetivo}</strong> series
-                      </span>
-                      <span>•</span>
-                      <span>
-                        <strong className="text-emerald-400">{ej.repeticionesObjetivo}</strong> reps
-                      </span>
-                      <span>•</span>
-                      <span>
-                        <strong className="text-emerald-400">{ej.pesoObjetivo || 0}</strong> kg
-                      </span>
+                    <h5 className="text-xs font-semibold text-[var(--text-primary)] font-space">{ej.nombre}</h5>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-[var(--text-secondary)] font-space tabular-nums">
+                      <span className="text-[var(--text-primary)] font-semibold">{ej.seriesObjetivo} series</span>
+                      <span className="text-[var(--text-secondary)]">×</span>
+                      <span className="text-[var(--text-primary)] font-semibold">{ej.repeticionesObjetivo} reps</span>
+                      <span className="text-[var(--text-secondary)]">•</span>
+                      <span className="text-[var(--accent-primary)] font-bold">{ej.pesoObjetivo || 0} kg</span>
                     </div>
                   </div>
                   <button
                     onClick={() => onDeleteEjercicio(ej.id)}
-                    className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                    className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors"
                     title="Eliminar ejercicio"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
                   </button>
                 </div>
               ))}

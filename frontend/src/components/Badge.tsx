@@ -2,24 +2,43 @@ import React from 'react';
 import type { ObjetivoFisico, RolUsuario } from '../types';
 
 interface BadgeProps {
-  type: 'objetivo' | 'rol' | 'status';
-  value: ObjetivoFisico | RolUsuario | boolean | string;
+  type: 'objetivo' | 'rol' | 'status' | 'ai' | 'error';
+  value?: ObjetivoFisico | RolUsuario | boolean | string;
+  label?: string;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ type, value }) => {
+export const Badge: React.FC<BadgeProps> = ({ type, value, label }) => {
+  if (type === 'ai') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--accent-secondary)]/10 text-[var(--accent-secondary)] border border-[var(--accent-secondary)]/30 font-space tracking-tight">
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-secondary)]" />
+        {label || 'Motor IA'}
+      </span>
+    );
+  }
+
+  if (type === 'error') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--accent-error)]/10 text-[var(--accent-error)] border border-[var(--accent-error)]/30 font-space tracking-tight">
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-error)]" />
+        {label || 'Estancamiento'}
+      </span>
+    );
+  }
+
   if (type === 'status') {
     const isActive = Boolean(value);
     return (
       <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border font-space tracking-tight ${
           isActive
-            ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
-            : 'bg-slate-800 text-slate-400 border border-slate-700'
+            ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border-[var(--accent-primary)]/40'
+            : 'bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border)]'
         }`}
       >
         <span
-          className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-            isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+          className={`w-1.5 h-1.5 rounded-full ${
+            isActive ? 'bg-[var(--accent-primary)]' : 'bg-[var(--text-secondary)]'
           }`}
         />
         {isActive ? 'Activa' : 'Inactiva'}
@@ -28,30 +47,28 @@ export const Badge: React.FC<BadgeProps> = ({ type, value }) => {
   }
 
   if (type === 'objetivo') {
-    const labels: Record<string, { text: string; bg: string; textCol: string }> = {
-      PERDER_PESO: { text: 'Perder Peso', bg: 'bg-amber-950/60', textCol: 'text-amber-400 border-amber-500/30' },
-      GANAR_MASA: { text: 'Ganar Masa', bg: 'bg-emerald-950/60', textCol: 'text-emerald-400 border-emerald-500/30' },
-      MANTENER: { text: 'Mantener', bg: 'bg-blue-950/60', textCol: 'text-blue-400 border-blue-500/30' },
-      RESISTENCIA: { text: 'Resistencia', bg: 'bg-purple-950/60', textCol: 'text-purple-400 border-purple-500/30' },
+    const labels: Record<string, string> = {
+      PERDER_PESO: 'Perder peso',
+      GANAR_MASA: 'Ganar masa',
+      MANTENER: 'Mantenimiento',
+      RESISTENCIA: 'Resistencia',
     };
-    const config = labels[String(value)] || { text: String(value), bg: 'bg-slate-800', textCol: 'text-slate-300 border-slate-700' };
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.bg} ${config.textCol}`}>
-        {config.text}
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] font-inter">
+        {labels[String(value)] || String(value)}
       </span>
     );
   }
 
   // Rol
-  const rolLabels: Record<string, { text: string; bg: string; textCol: string }> = {
-    ADMIN: { text: 'Admin', bg: 'bg-rose-950/60', textCol: 'text-rose-400 border-rose-500/30' },
-    ENTRENADOR: { text: 'Entrenador', bg: 'bg-indigo-950/60', textCol: 'text-indigo-400 border-indigo-500/30' },
-    USUARIO: { text: 'Usuario', bg: 'bg-cyan-950/60', textCol: 'text-cyan-400 border-cyan-500/30' },
+  const rolLabels: Record<string, string> = {
+    USUARIO: 'Atleta',
+    ENTRENADOR: 'Entrenador',
+    ADMIN: 'Admin',
   };
-  const rolConfig = rolLabels[String(value)] || { text: String(value), bg: 'bg-slate-800', textCol: 'text-slate-300 border-slate-700' };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold tracking-wide border uppercase ${rolConfig.bg} ${rolConfig.textCol}`}>
-      {rolConfig.text}
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--surface)] text-[var(--accent-primary)] border border-[var(--border)] font-space">
+      {rolLabels[String(value)] || String(value)}
     </span>
   );
 };

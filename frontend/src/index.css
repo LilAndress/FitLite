@@ -2,27 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Paleta FitLite (tema oscuro por defecto) */
+  --bg-primary: #0D1117;
+  --surface: #1A1F26;
+  --border: #2E343B;
+  --text-primary: #F5F7FA;
+  --text-secondary: #A0A7B2;
+  --accent-primary: #B7FF3B;
+  --accent-secondary: #FF8A3D;
+  --accent-error: #FF4D6D;
+
+  /* Tipografías: Space Grotesk para títulos y métricas; Inter para texto de cuerpo y UI */
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-emerald-500 selection:text-white;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    selection-background-color: var(--accent-primary);
+    selection-color: var(--bg-primary);
+  }
+
+  /* Headings con Space Grotesk (600/700) */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.015em;
+  }
+
+  .font-space {
+    font-family: var(--font-heading);
+  }
+
+  /* Mapeo seguro para cualquier clase previa */
+  .font-orbitron {
+    font-family: var(--font-heading);
+  }
+
+  .font-inter {
+    font-family: var(--font-body);
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0b0f19;
+  background: var(--bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
-  border-radius: 4px;
+  background: var(--border);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: var(--text-secondary);
 }

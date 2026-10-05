@@ -7,12 +7,13 @@ import {
   LineChart as LineChartIcon, 
   Plus, 
   Trash2, 
-  Calendar, 
   Dumbbell, 
   Filter, 
   TrendingUp, 
-  Award,
-  AlertCircle
+  AlertCircle,
+  Activity,
+  Layers,
+  Award
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -29,6 +30,7 @@ import { progresosApi } from '../api/progresos.api';
 import { rutinasApi } from '../api/rutinas.api';
 import { ejerciciosApi } from '../api/ejercicios.api';
 import { Modal } from '../components/Modal';
+import { StatCard } from '../components/StatCard';
 
 const progresoSchema = z.object({
   ejercicioId: z.coerce.number().min(1, 'Selecciona un ejercicio'),
@@ -60,7 +62,7 @@ export const ProgresoPage: React.FC = () => {
     enabled: Boolean(activeUser),
   });
 
-  // Fetch exercises from all routines of active user using useQuery (prevents re-render loops)
+  // Fetch exercises from all routines of active user using useQuery
   const { data: ejerciciosDisponibles = [] } = useQuery({
     queryKey: ['ejerciciosDisponibles', rutinas.map((r) => r.id).join(',')],
     queryFn: async () => {
@@ -114,11 +116,11 @@ export const ProgresoPage: React.FC = () => {
 
   if (!activeUser) {
     return (
-      <div className="max-w-4xl mx-auto py-16 px-4 text-center">
-        <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Selecciona un usuario</h2>
-        <p className="text-slate-400 text-sm">
-          Por favor selecciona un usuario en el menú superior para ver y registrar tu progreso.
+      <div className="max-w-4xl mx-auto py-20 px-4 text-center">
+        <AlertCircle className="w-12 h-12 text-[var(--accent-secondary)] mx-auto mb-3" strokeWidth={1.5} />
+        <h2 className="text-xl font-bold text-[var(--text-primary)] font-space mb-2 tracking-tight">Selecciona un perfil</h2>
+        <p className="text-[var(--text-secondary)] text-xs font-inter">
+          Selecciona un usuario en la barra superior para ver y registrar su progreso deportivo.
         </p>
       </div>
     );
@@ -141,86 +143,86 @@ export const ProgresoPage: React.FC = () => {
       ejercicio: p.ejercicioNombre,
     }));
 
-  // Stats calculation
   const maxPeso = progresos.length > 0 ? Math.max(...progresos.map((p) => p.pesoRealizado || 0)) : 0;
   const totalSeries = progresos.reduce((acc, p) => acc + p.seriesRealizadas, 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
         <div>
-          <h1 className="text-2xl font-extrabold text-white font-['Outfit'] flex items-center gap-2">
-            <LineChartIcon className="w-6 h-6 text-emerald-400" />
-            Evolución y Registro de Progreso
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] font-space flex items-center gap-3 tracking-tight">
+            <LineChartIcon className="w-6 h-6 text-[var(--accent-primary)]" strokeWidth={2} />
+            Métricas y progresión de cargas
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Visualiza tu sobrecarga progresiva en peso y repeticiones a lo largo del tiempo.
+          <p className="text-xs text-[var(--text-secondary)] font-inter mt-1">
+            Visualización de sobrecarga progresiva en peso y repeticiones.
           </p>
         </div>
 
+        {/* Primary Pill Button */}
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold hover:from-emerald-400 hover:to-teal-400 shadow-md shadow-emerald-500/20 text-xs transition-all hover:scale-105"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all self-start sm:self-auto font-inter"
         >
-          <Plus className="w-4 h-4" />
-          Registrar Sesión de Hoy
+          <Plus className="w-4 h-4" strokeWidth={2.5} />
+          Registrar sesión
         </button>
       </div>
 
-      {/* Summary KPI Badges */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
-            <Award className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Carga Máxima</span>
-            <div className="text-2xl font-black text-white font-['Outfit']">{maxPeso} kg</div>
-          </div>
-        </div>
+      {/* Tarjetas de Estadística con Icono Outline a la Izquierda y Variación */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <StatCard
+          title="Carga máxima"
+          value={maxPeso}
+          decimals={1}
+          suffix=" kg"
+          icon={Award}
+          variation={{ type: 'positive', text: '+Sobrecarga' }}
+          subtitle="Mayor peso superado en entrenamiento"
+          isPrimary={true}
+        />
 
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/20">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total de Series</span>
-            <div className="text-2xl font-black text-white font-['Outfit']">{totalSeries}</div>
-          </div>
-        </div>
+        <StatCard
+          title="Series acumuladas"
+          value={totalSeries}
+          decimals={0}
+          suffix=" series"
+          icon={Layers}
+          variation={{ type: 'positive', text: '+Volumen' }}
+          subtitle="Total de series ejecutadas con éxito"
+        />
 
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/20">
-            <Calendar className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Sesiones Totales</span>
-            <div className="text-2xl font-black text-white font-['Outfit']">{progresos.length}</div>
-          </div>
-        </div>
+        <StatCard
+          title="Sesiones registradas"
+          value={progresos.length}
+          decimals={0}
+          icon={Activity}
+          variation={{ type: 'positive', text: 'Activo' }}
+          subtitle="Registro cronológico continuo"
+        />
       </div>
 
-      {/* Interactive Chart Container */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Contenedor del Gráfico con Animación de Trazo */}
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
           <div>
-            <h2 className="text-lg font-bold text-white font-['Outfit'] flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-emerald-400" />
-              Gráfico de Sobrecarga Progresiva
+            <h2 className="text-sm font-bold text-[var(--text-primary)] font-space flex items-center gap-2 tracking-tight">
+              <TrendingUp className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
+              Curva de sobrecarga progresiva
             </h2>
-            <p className="text-xs text-slate-400">
-              Evolución cronológica de peso levantado (kg) y repeticiones.
+            <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
+              Evolución cronológica de carga (kg) en línea sólida y repeticiones en línea discontinua.
             </p>
           </div>
 
           {/* Exercise Filter */}
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
+            <Filter className="w-4 h-4 text-[var(--text-secondary)]" strokeWidth={2} />
             <select
               value={filtroEjercicioId}
               onChange={(e) => setFiltroEjercicioId(e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+              className="px-3.5 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-xs text-[var(--text-primary)] font-inter focus:outline-none focus:border-[var(--accent-primary)]"
             >
               <option value="all">Todos los ejercicios</option>
               {ejerciciosDisponibles.map((ej) => (
@@ -233,47 +235,54 @@ export const ProgresoPage: React.FC = () => {
         </div>
 
         {chartData.length === 0 ? (
-          <div className="h-72 flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-800 rounded-2xl">
-            <Dumbbell className="w-10 h-10 text-slate-600 mb-2" />
-            <p className="text-xs">No hay datos suficientes para graficar con este filtro.</p>
+          <div className="h-72 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/40">
+            <Dumbbell className="w-10 h-10 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
+            <p className="text-xs font-inter">No hay datos registrados con este filtro para graficar.</p>
           </div>
         ) : (
-          <div className="h-80 w-full pt-4">
+          <div className="h-80 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                <XAxis dataKey="fecha" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis yAxisId="left" stroke="#10b981" fontSize={11} tickLine={false} unit="kg" />
-                <YAxis yAxisId="right" orientation="right" stroke="#38bdf8" fontSize={11} tickLine={false} unit=" reps" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
+                <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
+                <YAxis yAxisId="left" stroke="#B7FF3B" fontSize={10} tickLine={false} unit="kg" />
+                <YAxis yAxisId="right" orientation="right" stroke="#FF8A3D" fontSize={10} tickLine={false} unit=" reps" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderColor: '#1e293b',
+                    backgroundColor: '#1A1F26',
+                    borderColor: '#2E343B',
                     borderRadius: '12px',
-                    color: '#fff',
-                    fontSize: '12px',
+                    color: '#F5F7FA',
+                    fontSize: '11px',
+                    boxShadow: 'none',
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                {/* Trazo animado de línea principal en --accent-primary */}
                 <Line
                   yAxisId="left"
                   type="monotone"
                   dataKey="peso"
                   name="Peso (kg)"
-                  stroke="#10b981"
+                  stroke="#B7FF3B"
                   strokeWidth={3}
-                  dot={{ r: 4, fill: '#10b981' }}
-                  activeDot={{ r: 6 }}
+                  isAnimationActive={true}
+                  animationDuration={1300}
+                  dot={{ r: 4, fill: '#B7FF3B', stroke: '#0D1117', strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: '#B7FF3B' }}
                 />
+                {/* Trazo animado de repeticiones en --accent-secondary */}
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="reps"
                   name="Repeticiones"
-                  stroke="#38bdf8"
+                  stroke="#FF8A3D"
                   strokeWidth={2}
                   strokeDasharray="4 4"
-                  dot={{ r: 3, fill: '#38bdf8' }}
+                  isAnimationActive={true}
+                  animationDuration={1300}
+                  dot={{ r: 3, fill: '#FF8A3D' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -281,56 +290,56 @@ export const ProgresoPage: React.FC = () => {
         )}
       </div>
 
-      {/* History Table */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden">
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="text-base font-bold text-white font-['Outfit']">Historial de Registros</h3>
-          <span className="text-xs text-slate-400 font-medium">
-            {filteredProgresos.length} entradas
+      {/* Historial Table */}
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] font-space tracking-tight">Historial de sesiones</h3>
+          <span className="text-xs text-[var(--text-secondary)] font-space tabular-nums">
+            {filteredProgresos.length} registros
           </span>
         </div>
 
         {isLoadingProgresos ? (
-          <div className="p-8 text-center text-xs text-slate-400">Cargando historial...</div>
+          <div className="p-8 text-center text-xs text-[var(--text-secondary)] font-inter">Cargando registros...</div>
         ) : filteredProgresos.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400">
-            No se han encontrado registros de entrenamiento para este usuario.
+          <div className="p-8 text-center text-xs text-[var(--text-secondary)] font-inter">
+            No se han registrado sesiones de entrenamiento para este perfil todavía.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/60 uppercase tracking-wider text-slate-400 text-[11px] border-b border-slate-800">
+            <table className="w-full text-left text-xs text-[var(--text-primary)]">
+              <thead className="bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] text-xs border-b border-[var(--border)] font-space">
                 <tr>
-                  <th className="py-3.5 px-4 font-semibold">Fecha</th>
-                  <th className="py-3.5 px-4 font-semibold">Ejercicio</th>
-                  <th className="py-3.5 px-4 font-semibold text-center">Series</th>
-                  <th className="py-3.5 px-4 font-semibold text-center">Repeticiones</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Peso Levantado</th>
-                  <th className="py-3.5 px-4 text-center">Acciones</th>
+                  <th className="py-3 px-5 font-semibold">Fecha</th>
+                  <th className="py-3 px-5 font-semibold">Ejercicio</th>
+                  <th className="py-3 px-5 font-semibold text-center">Series</th>
+                  <th className="py-3 px-5 font-semibold text-center">Reps</th>
+                  <th className="py-3 px-5 font-semibold text-right">Peso (kg)</th>
+                  <th className="py-3 px-5 text-center font-semibold">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-medium">
+              <tbody className="divide-y divide-[var(--border)] font-inter">
                 {filteredProgresos.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-4 font-semibold text-slate-200">{p.fecha}</td>
-                    <td className="py-3 px-4">
+                  <tr key={p.id} className="hover:bg-[var(--bg-primary)]/50 transition-colors">
+                    <td className="py-3.5 px-5 font-medium text-[var(--text-primary)] font-space tabular-nums">{p.fecha}</td>
+                    <td className="py-3.5 px-5 font-medium text-[var(--text-primary)]">
                       <div className="flex items-center gap-2">
-                        <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-slate-100">{p.ejercicioNombre}</span>
+                        <Dumbbell className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
+                        <span>{p.ejercicioNombre}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-center">{p.seriesRealizadas}</td>
-                    <td className="py-3 px-4 text-center">{p.repeticionesRealizadas}</td>
-                    <td className="py-3 px-4 text-right font-bold text-emerald-400">
+                    <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.seriesRealizadas}</td>
+                    <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.repeticionesRealizadas}</td>
+                    <td className="py-3.5 px-5 text-right font-bold text-[var(--accent-primary)] font-space tabular-nums">
                       {p.pesoRealizado || 0} kg
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3.5 px-5 text-center">
                       <button
                         onClick={() => deleteProgresoMutation.mutate(p.id)}
-                        className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                        className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors"
                         title="Eliminar registro"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4" strokeWidth={2} />
                       </button>
                     </td>
                   </tr>
@@ -345,19 +354,21 @@ export const ProgresoPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Registrar Sesión de Entrenamiento"
+        title="Registrar sesión de entrenamiento"
       >
         <form onSubmit={handleSubmit((data) => createProgresoMutation.mutate(data))} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Ejercicio *</label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Ejercicio *
+            </label>
             {ejerciciosDisponibles.length === 0 ? (
-              <p className="text-xs text-amber-400 bg-amber-950/40 p-2.5 rounded-xl border border-amber-500/20">
+              <p className="text-xs text-[var(--accent-secondary)] bg-[var(--accent-secondary)]/10 p-3 rounded-xl border border-[var(--accent-secondary)]/30 font-inter">
                 Primero debes crear una rutina y agregarle ejercicios en la pestaña de Rutinas.
               </p>
             ) : (
               <select
                 {...register('ejercicioId')}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
               >
                 <option value="">Selecciona un ejercicio...</option>
                 {ejerciciosDisponibles.map((ej) => (
@@ -368,75 +379,83 @@ export const ProgresoPage: React.FC = () => {
               </select>
             )}
             {errors.ejercicioId && (
-              <p className="text-[11px] text-rose-400 mt-1">{errors.ejercicioId.message}</p>
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errors.ejercicioId.message}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Fecha de Entrenamiento *</label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Fecha de ejecución *
+            </label>
             <input
               type="date"
               {...register('fecha')}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
             {errors.fecha && (
-              <p className="text-[11px] text-rose-400 mt-1">{errors.fecha.message}</p>
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errors.fecha.message}</p>
             )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Series Realizadas *</label>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1">
+                Series *
+              </label>
               <input
                 type="number"
                 {...register('seriesRealizadas')}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
               {errors.seriesRealizadas && (
-                <p className="text-[10px] text-rose-400 mt-1">{errors.seriesRealizadas.message}</p>
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errors.seriesRealizadas.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Reps Realizadas *</label>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1">
+                Reps *
+              </label>
               <input
                 type="number"
                 {...register('repeticionesRealizadas')}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
               {errors.repeticionesRealizadas && (
-                <p className="text-[10px] text-rose-400 mt-1">{errors.repeticionesRealizadas.message}</p>
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errors.repeticionesRealizadas.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Peso (kg) *</label>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1">
+                Peso (kg) *
+              </label>
               <input
                 type="number"
                 step="0.5"
                 {...register('pesoRealizado')}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
               {errors.pesoRealizado && (
-                <p className="text-[10px] text-rose-400 mt-1">{errors.pesoRealizado.message}</p>
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errors.pesoRealizado.message}</p>
               )}
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3">
+          <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700"
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={createProgresoMutation.isPending || ejerciciosDisponibles.length === 0}
-              className="px-5 py-2 rounded-xl bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
             >
-              {createProgresoMutation.isPending ? 'Guardando...' : 'Guardar Progreso'}
+              {createProgresoMutation.isPending ? 'Guardando...' : 'Guardar sesión'}
             </button>
           </div>
         </form>

@@ -4,30 +4,34 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7',
-          400: '#34d399',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
-          950: '#022c22',
-        },
-        dark: {
-          bg: '#0B0F19',
-          card: '#111827',
-          surface: '#1F2937',
-          border: '#374151',
-        }
+        'bg-primary': 'var(--bg-primary)',
+        'surface': 'var(--surface)',
+        'border-color': 'var(--border)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'accent-primary': 'var(--accent-primary)',
+        'accent-secondary': 'var(--accent-secondary)',
+        'accent-error': 'var(--accent-error)',
       },
+      fontFamily: {
+        space: ['var(--font-heading)', 'sans-serif'],
+        sans: ['var(--font-body)', 'sans-serif'],
+        inter: ['var(--font-body)', 'sans-serif'],
+        orbitron: ['var(--font-heading)', 'sans-serif'], // Alias seguro a Space Grotesk
+      },
+      borderColor: {
+        DEFAULT: 'var(--border)',
+      },
+      borderRadius: {
+        pill: '9999px',
+        card: '12px',
+        sm: '6px',
+        md: '8px',
+        lg: '12px',
+      }
     },
   },
   plugins: [],
