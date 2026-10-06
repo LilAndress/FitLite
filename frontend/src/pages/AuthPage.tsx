@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { 
   Dumbbell, 
@@ -24,14 +24,20 @@ import { authApi } from '../api/auth.api';
 import type { ObjetivoFisico, NivelExperiencia } from '../types';
 
 export const AuthPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setActiveUser, refreshUsers } = useUser();
 
-  // Mode: login or registro
-  const mode = searchParams.get('mode') === 'registro' ? 'registro' : 'login';
+  // Mode: if on /registro, mode is 'registro'; if on /login, mode is 'login'
+  const isRegisterRoute = location.pathname === '/registro' || searchParams.get('mode') === 'registro';
+  const mode = isRegisterRoute ? 'registro' : 'login';
   const setMode = (newMode: 'login' | 'registro') => {
-    setSearchParams({ mode: newMode });
+    if (newMode === 'registro') {
+      navigate('/registro');
+    } else {
+      navigate('/login');
+    }
     setError(null);
     setForgotSent(false);
   };
@@ -72,7 +78,7 @@ export const AuthPage: React.FC = () => {
     onSuccess: async (usuario) => {
       await refreshUsers();
       setActiveUser(usuario);
-      navigate('/');
+      navigate('/dashboard');
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || err.message || 'Error al iniciar sesión. Verifica tus credenciales.';
@@ -101,7 +107,7 @@ export const AuthPage: React.FC = () => {
     onSuccess: async (newUser) => {
       await refreshUsers();
       setActiveUser(newUser);
-      navigate('/');
+      navigate('/dashboard');
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || err.message || 'Error al crear la cuenta. Verifica que el correo no esté duplicado.';
@@ -121,24 +127,46 @@ export const AuthPage: React.FC = () => {
   };
 
   // Validate Step 1 before moving to Step 2
-  const handleNextStep = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNextStep = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setError(null);
 
-    if (!regNombre.trim() || regNombre.trim().length < 2) {
+    const cleanNombre = regNombre.trim();
+    const cleanEmail = regEmail.trim();
+
+    if (!cleanNombre) {
+      setError('Por favor ingresa tu nombre completo.');
+      return;
+    }
+    if (cleanNombre.length < 2) {
       setError('El nombre debe tener al menos 2 caracteres.');
       return;
     }
-    if (!regEmail.trim() || !regEmail.includes('@')) {
-      setError('Ingresa un correo electrónico válido.');
+    if (!cleanEmail) {
+      setError('Por favor ingresa tu correo electrónico.');
       return;
     }
-    if (!regPassword || regPassword.length < 4) {
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setError('Por favor ingresa un correo electrónico válido (ej. atleta@fitlite.com).');
+      return;
+    }
+    if (!regPassword) {
+      setError('Por favor ingresa una contraseña.');
+      return;
+    }
+    if (regPassword.length < 4) {
       setError('La contraseña debe tener al menos 4 caracteres.');
       return;
     }
+    if (!regConfirmPassword) {
+      setError('Por favor confirma tu contraseña.');
+      return;
+    }
     if (regPassword !== regConfirmPassword) {
-      setError('Las contraseñas no coinciden.');
+      setError('Las contraseñas no coinciden. Asegúrate de que sean idénticas.');
       return;
     }
 
@@ -146,8 +174,11 @@ export const AuthPage: React.FC = () => {
   };
 
   // Handle Register Final Submit
-  const handleRegistroSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegistroSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setError(null);
 
     const edadNum = parseInt(regEdad, 10);
@@ -327,7 +358,14 @@ export const AuthPage: React.FC = () => {
 
               {regStep === 1 ? (
                 /* PASO 1 — CUENTA */
-                <form onSubmit={handleNextStep} className="space-y-4">
+                <form 
+                  noValidate 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleNextStep();
+                  }} 
+                  className="space-y-4"
+                >
                   <div className="mb-2">
                     <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] font-space tracking-tight">
                       Crea tu cuenta
@@ -346,7 +384,10 @@ export const AuthPage: React.FC = () => {
                       <input
                         type="text"
                         value={regNombre}
-                        onChange={(e) => setRegNombre(e.target.value)}
+                        onChange={(e) => {
+                          setRegNombre(e.target.value);
+                          if (error) setError(null);
+                        }}
                         placeholder="Ej. Roberto Sánchez"
                         required
                         className="w-full pl-10 pr-4 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter transition-all"
@@ -363,7 +404,10 @@ export const AuthPage: React.FC = () => {
                       <input
                         type="email"
                         value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
+                        onChange={(e) => {
+                          setRegEmail(e.target.value);
+                          if (error) setError(null);
+                        }}
                         placeholder="roberto@fitlite.com"
                         required
                         className="w-full pl-10 pr-4 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter transition-all"
@@ -380,7 +424,10 @@ export const AuthPage: React.FC = () => {
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
+                        onChange={(e) => {
+                          setRegPassword(e.target.value);
+                          if (error) setError(null);
+                        }}
                         placeholder="Mínimo 4 caracteres"
                         required
                         className="w-full pl-10 pr-10 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter transition-all"
@@ -393,6 +440,12 @@ export const AuthPage: React.FC = () => {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    {regPassword.length > 0 && regPassword.length < 4 && (
+                      <p className="text-[11px] text-amber-400 mt-1 font-inter flex items-center gap-1 animate-fadeIn">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>Mínimo 4 caracteres (llevas {regPassword.length})</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -404,7 +457,10 @@ export const AuthPage: React.FC = () => {
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         value={regConfirmPassword}
-                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        onChange={(e) => {
+                          setRegConfirmPassword(e.target.value);
+                          if (error) setError(null);
+                        }}
                         placeholder="Repite tu contraseña"
                         required
                         className="w-full pl-10 pr-10 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter transition-all"
@@ -417,12 +473,38 @@ export const AuthPage: React.FC = () => {
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    {regConfirmPassword.length > 0 && (
+                      <p className={`text-[11px] mt-1 font-inter flex items-center gap-1 animate-fadeIn ${
+                        regPassword === regConfirmPassword ? 'text-[var(--accent-primary)] font-medium' : 'text-red-400'
+                      }`}>
+                        {regPassword === regConfirmPassword ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Las contraseñas coinciden</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>Las contraseñas no coinciden</span>
+                          </>
+                        )}
+                      </p>
+                    )}
                   </div>
+
+                  {/* Banner de error visible directamente sobre el botón */}
+                  {error && (
+                    <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-start gap-2.5 font-inter animate-fadeIn shadow-sm">
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <span>{error}</span>
+                    </div>
+                  )}
 
                   <div className="pt-2">
                     <button
-                      type="submit"
-                      className="w-full py-3 px-6 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter flex items-center justify-center gap-2 shadow-md"
+                      type="button"
+                      onClick={() => handleNextStep()}
+                      className="w-full py-3.5 px-6 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-bold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter flex items-center justify-center gap-2 shadow-md hover:shadow-[0_0_20px_rgba(183,255,59,0.35)] cursor-pointer"
                     >
                       <span>Continuar al perfil físico</span>
                       <ArrowRight className="w-4 h-4" />
@@ -431,7 +513,14 @@ export const AuthPage: React.FC = () => {
                 </form>
               ) : (
                 /* PASO 2 — PERFIL FÍSICO (BASELINE PARA EL MOTOR DE IA) */
-                <form onSubmit={handleRegistroSubmit} className="space-y-4 animate-fadeIn">
+                <form 
+                  noValidate 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleRegistroSubmit();
+                  }} 
+                  className="space-y-4 animate-fadeIn"
+                >
                   <div className="mb-2">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[var(--accent-secondary)]/20 text-[var(--accent-secondary)] border border-[var(--accent-secondary)]/40 font-inter">
@@ -457,7 +546,10 @@ export const AuthPage: React.FC = () => {
                         min="14"
                         max="100"
                         value={regEdad}
-                        onChange={(e) => setRegEdad(e.target.value)}
+                        onChange={(e) => {
+                          setRegEdad(e.target.value);
+                          if (error) setError(null);
+                        }}
                         placeholder="26"
                         required
                         className="w-full px-3 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
@@ -475,7 +567,10 @@ export const AuthPage: React.FC = () => {
                         min="100"
                         max="250"
                         value={regEstatura}
-                        onChange={(e) => setRegEstatura(e.target.value)}
+                        onChange={(e) => {
+                          setRegEstatura(e.target.value);
+                          if (error) setError(null);
+                        }}
                         placeholder="175"
                         required
                         className="w-full px-3 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
@@ -493,7 +588,10 @@ export const AuthPage: React.FC = () => {
                         min="30"
                         max="300"
                         value={regPeso}
-                        onChange={(e) => setRegPeso(e.target.value)}
+                        onChange={(e) => {
+                          setRegPeso(e.target.value);
+                          if (error) setError(null);
+                        }}
                         placeholder="74.5"
                         required
                         className="w-full px-3 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
@@ -539,19 +637,28 @@ export const AuthPage: React.FC = () => {
                     </p>
                   </div>
 
+                  {/* Banner de error visible sobre los botones de finalización */}
+                  {error && (
+                    <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-start gap-2.5 font-inter animate-fadeIn shadow-sm">
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-3 pt-2">
                     <button
                       type="button"
                       onClick={() => setRegStep(1)}
-                      className="py-3 px-5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-semibold text-xs transition-all active:scale-95 font-inter flex items-center gap-1.5"
+                      className="py-3 px-5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-semibold text-xs transition-all active:scale-95 font-inter flex items-center gap-1.5 cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       <span>Atrás</span>
                     </button>
                     <button
-                      type="submit"
+                      type="button"
+                      onClick={() => handleRegistroSubmit()}
                       disabled={registroMutation.isPending}
-                      className="flex-1 py-3 px-6 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter shadow-md text-center"
+                      className="flex-1 py-3.5 px-6 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-bold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter shadow-md text-center cursor-pointer hover:shadow-[0_0_20px_rgba(183,255,59,0.35)]"
                     >
                       {registroMutation.isPending ? 'Creando tu perfil con IA...' : 'Crear cuenta'}
                     </button>
