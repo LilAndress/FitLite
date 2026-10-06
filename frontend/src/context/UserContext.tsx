@@ -40,11 +40,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUsers(data);
       if (data.length > 0) {
         setActiveUserState((current) => {
-          if (!current || !data.some((u) => u.id === current.id)) {
+          if (!current) {
             localStorage.setItem('fitlite_active_user', JSON.stringify(data[0]));
             return data[0];
           }
-          return current;
+          const updatedCurrent = data.find((u) => u.id === current.id);
+          if (updatedCurrent) {
+            localStorage.setItem('fitlite_active_user', JSON.stringify(updatedCurrent));
+            return updatedCurrent;
+          }
+          localStorage.setItem('fitlite_active_user', JSON.stringify(data[0]));
+          return data[0];
         });
       } else {
         setActiveUserState(null);

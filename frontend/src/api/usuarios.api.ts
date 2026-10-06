@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Usuario, UsuarioRequest } from '../types';
+import type { Usuario, UsuarioRequest, ActualizarPesoRequest } from '../types';
 
 export const usuariosApi = {
   getAll: async (): Promise<Usuario[]> => {
@@ -26,6 +26,11 @@ export const usuariosApi = {
 
   update: async (id: number, usuario: UsuarioRequest): Promise<Usuario> => {
     const { data } = await apiClient.put<Usuario>(`/usuarios/${id}`, usuario);
+    return data;
+  },
+
+  actualizarPeso: async (id: number, pesoData: ActualizarPesoRequest): Promise<Usuario> => {
+    const { data } = await apiClient.patch<Usuario>(`/usuarios/${id}/peso`, pesoData);
     return data;
   },
 

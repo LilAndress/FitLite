@@ -1,14 +1,18 @@
 package com.fitlite.fitlite_backend.service;
 
+import com.fitlite.fitlite_backend.dto.ActualizarPesoRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioResponseDTO;
+import com.fitlite.fitlite_backend.entity.PesoCorporal;
 import com.fitlite.fitlite_backend.entity.Usuario;
 import com.fitlite.fitlite_backend.exception.ResourceNotFoundException;
+import com.fitlite.fitlite_backend.repository.PesoCorporalRepository;
 import com.fitlite.fitlite_backend.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,6 +21,7 @@ import java.util.List;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PesoCorporalRepository pesoCorporalRepository;
 
     @Transactional
     public UsuarioResponseDTO crearUsuario(UsuarioRequestDTO request) {
@@ -30,9 +35,21 @@ public class UsuarioService {
         usuario.setPassword(request.getPassword());
         usuario.setObjetivo(request.getObjetivo());
         usuario.setRol(request.getRol());
+        usuario.setPesoActual(request.getPesoActual());
         usuario.setFechaRegistro(LocalDateTime.now());
 
         Usuario guardado = usuarioRepository.save(usuario);
+
+        if (request.getPesoActual() != null) {
+            PesoCorporal pesoInicial = PesoCorporal.builder()
+                    .peso(request.getPesoActual())
+                    .fecha(LocalDate.now())
+                    .notas("Peso inicial de registro")
+                    .usuario(guardado)
+                    .build();
+            pesoCorporalRepository.save(pesoInicial);
+        }
+
         return mapToResponse(guardado);
     }
 
@@ -74,8 +91,36 @@ public class UsuarioService {
         usuario.setObjetivo(request.getObjetivo());
         usuario.setRol(request.getRol());
 
+        if (request.getPesoActual() != null && !request.getPesoActual().equals(usuario.getPesoActual())) {
+            usuario.setPesoActual(request.getPesoActual());
+            PesoCorporal nuevoPeso = PesoCorporal.builder()
+                    .peso(request.getPesoActual())
+                    .fecha(LocalDate.now())
+                    .notas("Actualización de perfil")
+                    .usuario(usuario)
+                    .build();
+            pesoCorporalRepository.save(nuevoPeso);
+        }
+
         Usuario actualizado = usuarioRepository.save(usuario);
         return mapToResponse(actualizado);
+    }
+
+    @Transactional
+    public UsuarioResponseDTO actualizarPesoActual(Long id, ActualizarPesoRequestDTO request) {
+        Usuario usuario = buscarEntidadPorId(id);
+        usuario.setPesoActual(request.getPeso());
+        Usuario guardado = usuarioRepository.save(usuario);
+
+        PesoCorporal nuevoPeso = PesoCorporal.builder()
+                .peso(request.getPeso())
+                .fecha(request.getFecha() != null ? request.getFecha() : LocalDate.now())
+                .notas(request.getNotas())
+                .usuario(guardado)
+                .build();
+        pesoCorporalRepository.save(nuevoPeso);
+
+        return mapToResponse(guardado);
     }
 
     @Transactional
@@ -96,6 +141,7 @@ public class UsuarioService {
                 .email(usuario.getEmail())
                 .objetivo(usuario.getObjetivo())
                 .rol(usuario.getRol())
+                .pesoActual(usuario.getPesoActual())
                 .fechaRegistro(usuario.getFechaRegistro())
                 .build();
     }

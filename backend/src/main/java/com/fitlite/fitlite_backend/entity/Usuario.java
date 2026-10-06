@@ -37,9 +37,15 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     private RolUsuario rol;
 
+    @Column(name = "peso_actual")
+    private Double pesoActual;
+
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro = LocalDateTime.now();
 
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     private List<Rutina> rutinas = new ArrayList<>();
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PesoCorporal> pesosCorporales = new ArrayList<>();
 }

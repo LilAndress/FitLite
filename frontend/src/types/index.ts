@@ -7,6 +7,7 @@ export interface Usuario {
   email: string;
   objetivo: ObjetivoFisico;
   rol: RolUsuario;
+  pesoActual?: number | null;
   fechaRegistro: string;
 }
 
@@ -16,6 +17,29 @@ export interface UsuarioRequest {
   password?: string;
   objetivo: ObjetivoFisico;
   rol: RolUsuario;
+  pesoActual?: number | null;
+}
+
+export interface ActualizarPesoRequest {
+  peso: number;
+  fecha?: string;
+  notas?: string;
+}
+
+export interface PesoCorporal {
+  id: number;
+  peso: number;
+  fecha: string;
+  usuarioId: number;
+  usuarioNombre: string;
+  notas?: string;
+}
+
+export interface PesoCorporalRequest {
+  peso: number;
+  fecha: string;
+  usuarioId: number;
+  notas?: string;
 }
 
 export interface Rutina {

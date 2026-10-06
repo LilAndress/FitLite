@@ -1,5 +1,6 @@
 package com.fitlite.fitlite_backend.controller;
 
+import com.fitlite.fitlite_backend.dto.ActualizarPesoRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioResponseDTO;
 import com.fitlite.fitlite_backend.service.UsuarioService;
@@ -44,6 +45,12 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponseDTO> actualizarUsuario(@PathVariable Long id,
                                                                @Valid @RequestBody UsuarioRequestDTO request) {
         return ResponseEntity.ok(usuarioService.actualizarUsuario(id, request));
+    }
+
+    @PatchMapping("/{id}/peso")
+    public ResponseEntity<UsuarioResponseDTO> actualizarPeso(@PathVariable Long id,
+                                                            @Valid @RequestBody ActualizarPesoRequestDTO request) {
+        return ResponseEntity.ok(usuarioService.actualizarPesoActual(id, request));
     }
 
     @DeleteMapping("/{id}")

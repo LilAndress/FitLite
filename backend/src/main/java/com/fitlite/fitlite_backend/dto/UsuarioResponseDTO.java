@@ -20,5 +20,6 @@ public class UsuarioResponseDTO {
     private String email;
     private ObjetivoFisico objetivo;
     private RolUsuario rol;
+    private Double pesoActual;
     private LocalDateTime fechaRegistro;
 }

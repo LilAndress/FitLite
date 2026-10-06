@@ -1,27 +1,45 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { 
   Dumbbell, 
   TrendingUp, 
+  TrendingDown,
   Plus, 
   Calendar, 
-  Zap,
-  CheckCircle2,
-  Activity,
-  Flame,
-  Target
+  Zap, 
+  CheckCircle2, 
+  Activity, 
+  Flame, 
+  Target,
+  Scale,
+  Edit3,
+  Clock
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useUser } from '../context/UserContext';
 import { rutinasApi } from '../api/rutinas.api';
 import { progresosApi } from '../api/progresos.api';
+import { pesosCorporalesApi } from '../api/pesos.api';
+import { usuariosApi } from '../api/usuarios.api';
 import { Badge } from '../components/Badge';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { CircularProgress } from '../components/CircularProgress';
+import { Modal } from '../components/Modal';
 
 export const DashboardPage: React.FC = () => {
-  const { activeUser, users } = useUser();
+  const { activeUser, users, refreshUsers } = useUser();
+  const queryClient = useQueryClient();
+
+  // Estado para modal de actualización rápida de peso
+  const [isPesoModalOpen, setIsPesoModalOpen] = useState(false);
+  const [pesoInput, setPesoInput] = useState<string>('');
+  const [fechaInput, setFechaInput] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [notasInput, setNotasInput] = useState<string>('');
+  const [pesoError, setPesoError] = useState<string | null>(null);
+
+  // Tab para selector de gráfica en el dashboard
+  const [graficaTab, setGraficaTab] = useState<'ejercicios' | 'peso'>('ejercicios');
 
   const { data: rutinas = [] } = useQuery({
     queryKey: ['rutinas', activeUser?.id],
@@ -34,6 +52,53 @@ export const DashboardPage: React.FC = () => {
     queryFn: () => (activeUser ? progresosApi.getByUsuario(activeUser.id) : Promise.resolve([])),
     enabled: Boolean(activeUser),
   });
+
+  const { data: historialPesos = [] } = useQuery({
+    queryKey: ['pesosCorporales', activeUser?.id],
+    queryFn: () => (activeUser ? pesosCorporalesApi.getByUsuario(activeUser.id) : Promise.resolve([])),
+    enabled: Boolean(activeUser),
+  });
+
+  // Mutación para actualizar peso rápido desde dashboard
+  const updatePesoMutation = useMutation({
+    mutationFn: async ({ peso, fecha, notas }: { peso: number; fecha?: string; notas?: string }) => {
+      if (!activeUser) throw new Error('No user selected');
+      return usuariosApi.actualizarPeso(activeUser.id, { peso, fecha, notas });
+    },
+    onSuccess: async () => {
+      await refreshUsers();
+      queryClient.invalidateQueries({ queryKey: ['pesosCorporales', activeUser?.id] });
+      setIsPesoModalOpen(false);
+      setPesoInput('');
+      setNotasInput('');
+      setPesoError(null);
+    },
+    onError: (err: any) => {
+      setPesoError(err.response?.data?.message || 'Error al actualizar el peso corporal');
+    },
+  });
+
+  const handleGuardarPeso = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pesoNum = parseFloat(pesoInput);
+    if (isNaN(pesoNum) || pesoNum <= 0) {
+      setPesoError('Ingresa un peso válido superior a 0 kg');
+      return;
+    }
+    updatePesoMutation.mutate({
+      peso: pesoNum,
+      fecha: fechaInput || undefined,
+      notas: notasInput.trim() || undefined,
+    });
+  };
+
+  const abrirModalPeso = () => {
+    setPesoInput(activeUser?.pesoActual ? String(activeUser.pesoActual) : '');
+    setFechaInput(new Date().toISOString().split('T')[0]);
+    setNotasInput('');
+    setPesoError(null);
+    setIsPesoModalOpen(true);
+  };
 
   if (!activeUser && users.length === 0) {
     return (
@@ -61,7 +126,7 @@ export const DashboardPage: React.FC = () => {
   const rutinasActivas = rutinas.filter((r) => r.activa);
   const ultimoProgreso = progresos.length > 0 ? progresos[0] : null;
 
-  // Chart data in chronological order
+  // Exercise Chart data in chronological order
   const chartData = [...progresos].reverse().slice(-10).map((p) => ({
     fecha: p.fecha.slice(5),
     peso: p.pesoRealizado || 0,
@@ -69,10 +134,23 @@ export const DashboardPage: React.FC = () => {
     ejercicio: p.ejercicioNombre,
   }));
 
+  // Body weight chart data in chronological order
+  const chartPesoData = [...historialPesos].reverse().slice(-10).map((p) => ({
+    fecha: p.fecha.slice(5),
+    peso: p.peso,
+    notas: p.notas || '',
+  }));
+
   const maxPeso = progresos.length > 0 ? Math.max(...progresos.map((p) => p.pesoRealizado || 0)) : 0;
   const totalSeries = progresos.reduce((acc, p) => acc + p.seriesRealizadas, 0);
 
-  // Calculation for adherence percentage (mock or sessions based)
+  // Body weight calculations
+  const pesoActual = activeUser?.pesoActual ?? (historialPesos.length > 0 ? historialPesos[0].peso : null);
+  const pesoPrevio = historialPesos.length > 1 ? historialPesos[1].peso : null;
+  const pesoDiff = pesoActual !== null && pesoPrevio !== null ? Number((pesoActual - pesoPrevio).toFixed(1)) : null;
+  const ultimoPesaje = historialPesos.length > 0 ? historialPesos[0] : null;
+
+  // Calculation for adherence percentage
   const adherencia = progresos.length > 0 ? Math.min(Math.round((progresos.length / 4) * 100), 100) : 85;
 
   return (
@@ -88,12 +166,19 @@ export const DashboardPage: React.FC = () => {
             Centro de mando / <span className="text-[var(--accent-primary)]">{activeUser?.nombre}</span>
           </h1>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-inter mt-1">
-            Parámetros de sobrecarga progresiva y métricas de rendimiento en tiempo real.
+            Parámetros de sobrecarga progresiva, peso corporal y métricas de rendimiento en tiempo real.
           </p>
         </div>
 
-        {/* Buttons: Primary & Secondary in pill-shape */}
-        <div className="flex items-center gap-3">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={abrirModalPeso}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--accent-primary)]/40 text-[var(--accent-primary)] text-xs font-semibold hover:bg-[var(--accent-primary)]/10 active:scale-95 transition-all font-inter"
+          >
+            <Scale className="w-3.5 h-3.5" strokeWidth={2.2} />
+            Actualizar peso
+          </button>
           <Link
             to="/progreso"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter"
@@ -103,7 +188,7 @@ export const DashboardPage: React.FC = () => {
           </Link>
           <Link
             to="/rutinas"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-medium hover:border-[var(--accent-primary)]/50 active:scale-95 transition-all font-inter"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-medium hover:border-[var(--accent-primary)]/50 active:scale-95 transition-all font-inter"
           >
             <Calendar className="w-3.5 h-3.5 text-[var(--text-secondary)]" strokeWidth={2} />
             Rutinas ({rutinas.length})
@@ -111,10 +196,10 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* FILA DE MÉTRICAS: PROTAGONISTA VISUAL + FRANJA COMPACTA */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-        {/* TARJETA PROTAGONISTA VISUAL (5 cols) */}
-        <div className="lg:col-span-5 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group hover:border-[var(--accent-primary)]/40 transition-colors">
+      {/* FILA DE MÉTRICAS: CARGA PICO + PESO CORPORAL EDITABLE + FRANJA COMPACTA */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 items-stretch">
+        {/* TARJETA 1: CARGA PICO (4 cols) */}
+        <div className="lg:col-span-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group hover:border-[var(--accent-primary)]/40 transition-colors">
           <div>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -126,12 +211,11 @@ export const DashboardPage: React.FC = () => {
                     Carga pico
                   </span>
                   <h3 className="text-xs text-[var(--text-secondary)]/80 font-inter mt-0.5">
-                    Máxima resistencia levantada
+                    Máxima resistencia
                   </h3>
                 </div>
               </div>
 
-              {/* Variación positiva en --accent-primary */}
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold font-space text-[var(--accent-primary)] bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30">
                 <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.2} />
                 <span>+6.4%</span>
@@ -148,7 +232,7 @@ export const DashboardPage: React.FC = () => {
           <div className="pt-4 border-t border-[var(--border)] mt-4 flex items-center justify-between text-xs">
             <span className="text-[var(--text-secondary)] font-inter flex items-center gap-2 truncate">
               <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)]" />
-              {ultimoProgreso ? ultimoProgreso.ejercicioNombre : 'Sin registros de peso aún'}
+              {ultimoProgreso ? ultimoProgreso.ejercicioNombre : 'Sin registros aún'}
             </span>
             <span className="text-[var(--accent-primary)] font-space text-xs shrink-0 font-medium">
               {ultimoProgreso ? ultimoProgreso.fecha : 'Pendiente'}
@@ -156,65 +240,116 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* FRANJA COMPACTA DE MÉTRICAS (7 cols) - CON ANILLO DE PROGRESO CIRCULAR */}
-        <div className="lg:col-span-7 bg-[var(--surface)] border border-[var(--border)] rounded-2xl grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
-          {/* Métrica 1: Anillo de Adherencia Circular */}
-          <div className="p-5 flex items-center justify-center">
+        {/* TARJETA 2: PESO CORPORAL ACTUAL EDITABLE (4 cols) */}
+        <div className="lg:col-span-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group hover:border-[var(--accent-primary)]/40 transition-colors">
+          <div>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 flex items-center justify-center shrink-0">
+                  <Scale className="w-5 h-5" strokeWidth={2} />
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-[var(--text-secondary)] font-space">
+                    Peso corporal
+                  </span>
+                  <h3 className="text-xs text-[var(--text-secondary)]/80 font-inter mt-0.5">
+                    Perfil del atleta
+                  </h3>
+                </div>
+              </div>
+
+              {/* Botón rápido de edición */}
+              <button
+                onClick={abrirModalPeso}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold font-inter text-[var(--accent-primary)] bg-[var(--accent-primary)]/10 hover:bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/30 transition-all active:scale-95"
+                title="Editar peso actual"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Editar</span>
+              </button>
+            </div>
+
+            <div className="mt-6 mb-2">
+              {pesoActual !== null && pesoActual > 0 ? (
+                <div className="text-4xl sm:text-5xl font-bold text-[var(--text-primary)] font-space tracking-tight flex items-baseline gap-2 tabular-nums">
+                  <AnimatedCounter value={pesoActual} decimals={1} suffix=" kg" />
+                </div>
+              ) : (
+                <div className="py-2">
+                  <span className="text-2xl font-bold text-[var(--text-secondary)] font-space">
+                    Sin registrar
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-[var(--border)] mt-4 flex items-center justify-between text-xs">
+            <span className="text-[var(--text-secondary)] font-inter flex items-center gap-1.5 truncate">
+              {pesoDiff !== null ? (
+                <span className={`inline-flex items-center gap-1 font-space font-medium ${pesoDiff > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {pesoDiff > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                  {pesoDiff > 0 ? `+${pesoDiff} kg` : `${pesoDiff} kg`}
+                  <span className="text-[var(--text-secondary)] font-inter font-normal ml-1">vs anterior</span>
+                </span>
+              ) : (
+                <span className="text-[var(--text-secondary)]">
+                  {historialPesos.length > 0 ? '1er registro histórico' : 'Toca "Editar" para registrar'}
+                </span>
+              )}
+            </span>
+            <span className="text-[var(--text-secondary)] font-space text-xs shrink-0 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {ultimoPesaje ? ultimoPesaje.fecha : 'Hoy'}
+            </span>
+          </div>
+        </div>
+
+        {/* TARJETA 3: FRANJA COMPACTA ADHERENCIA Y VOLUMEN (4 cols) */}
+        <div className="lg:col-span-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl grid grid-cols-2 divide-x divide-[var(--border)] p-2">
+          {/* Subcolumna 1: Adherencia Circular */}
+          <div className="p-4 flex flex-col items-center justify-center text-center">
             <CircularProgress
               percentage={adherencia}
-              size={82}
-              strokeWidth={7}
+              size={76}
+              strokeWidth={6.5}
               label="Adherencia"
-              sublabel="Consistencia de plan"
+              sublabel="Plan activo"
             />
           </div>
 
-          {/* Métrica 2: Rutinas Activas */}
-          <div className="p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[var(--text-secondary)]">
-              <span className="text-xs font-semibold text-[var(--text-secondary)] font-space">
-                Plan activo
-              </span>
-              <Calendar className="w-4 h-4" strokeWidth={2} />
-            </div>
-            <div className="my-2">
-              <div className="text-3xl font-bold text-[var(--text-primary)] font-space tabular-nums">
-                <AnimatedCounter value={rutinasActivas.length} />
-                <span className="text-xs text-[var(--text-secondary)] font-normal ml-2 font-inter">
-                  / {rutinas.length} total
+          {/* Subcolumna 2: Volumen y Metas */}
+          <div className="p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between text-[var(--text-secondary)] mb-1">
+                <span className="text-[11px] font-semibold text-[var(--text-secondary)] font-space">
+                  Volumen total
                 </span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--accent-primary)]" strokeWidth={2} />
               </div>
-            </div>
-            <p className="text-xs text-[var(--text-secondary)] font-inter line-clamp-1">
-              {rutinasActivas.length > 0 ? rutinasActivas[0].nombre : 'Ninguna activa'}
-            </p>
-          </div>
-
-          {/* Métrica 3: Series y Perfil */}
-          <div className="p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[var(--text-secondary)]">
-              <span className="text-xs font-semibold text-[var(--text-secondary)] font-space">
-                Volumen total
-              </span>
-              <CheckCircle2 className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
-            </div>
-            <div className="my-2">
-              <div className="text-3xl font-bold text-[var(--text-primary)] font-space tabular-nums">
+              <div className="text-2xl font-bold text-[var(--text-primary)] font-space tabular-nums">
                 <AnimatedCounter value={totalSeries} />
-                <span className="text-xs text-[var(--accent-primary)] font-semibold ml-2 font-inter">
+                <span className="text-[11px] text-[var(--accent-primary)] font-semibold ml-1.5 font-inter">
                   series
                 </span>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <Badge type="objetivo" value={activeUser?.objetivo || 'MANTENER'} />
-              <Badge type="rol" value={activeUser?.rol || 'USUARIO'} />
+
+            <div className="space-y-1.5 pt-2 border-t border-[var(--border)]">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-[var(--text-secondary)]">Objetivo</span>
+                <Badge type="objetivo" value={activeUser?.objetivo || 'MANTENER'} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-[var(--text-secondary)]">Rol</span>
+                <Badge type="rol" value={activeUser?.rol || 'USUARIO'} />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ALERTA DEL MOTOR DE IA (Exclusivo en --accent-secondary: #FF8A3D) */}
+      {/* ALERTA DEL MOTOR DE IA */}
       <div className="bg-[var(--accent-secondary)]/10 border border-[var(--accent-secondary)]/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3.5">
           <div className="w-8 h-8 rounded-full bg-[var(--accent-secondary)] text-[#0D1117] flex items-center justify-center shrink-0 font-bold">
@@ -230,12 +365,13 @@ export const DashboardPage: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-[var(--text-primary)] font-inter mt-0.5">
-              Consistencia sólida detectada. La IA ha calibrado +2.5 kg en tus ejercicios principales para el próximo microciclo.
+              {pesoActual
+                ? `Peso actual sincronizado en ${pesoActual} kg con objetivo ${activeUser?.objetivo}. Progresión de cargas adaptada.`
+                : 'Registra tu peso corporal actual para permitir al algoritmo calibrar tus requerimientos de carga.'}
             </p>
           </div>
         </div>
 
-        {/* Botón terciario en texto plano con flecha "→" */}
         <Link
           to="/rutinas"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-secondary)] hover:opacity-80 transition-opacity font-inter whitespace-nowrap self-end sm:self-center"
@@ -247,75 +383,158 @@ export const DashboardPage: React.FC = () => {
 
       {/* Gráfica de Progreso y Listado de Rutinas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gráfica Analítica (2 cols) */}
+        {/* Gráfica Analítica con Selector de Modo (2 cols) */}
         <div className="lg:col-span-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-5 pb-3 border-b border-[var(--border)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-[var(--border)]">
             <div>
-              <h2 className="text-sm font-bold text-[var(--text-primary)] font-space flex items-center gap-2 tracking-tight">
-                <Activity className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
-                Historial de sobrecarga progresiva (kg)
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-[var(--text-primary)] font-space tracking-tight">
+                  {graficaTab === 'ejercicios'
+                    ? 'Historial de sobrecarga progresiva (kg)'
+                    : 'Evolución de peso corporal (kg)'}
+                </h2>
+              </div>
               <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
-                Trazo de cargas progresivas registradas
+                {graficaTab === 'ejercicios'
+                  ? 'Trazo de cargas progresivas registradas en ejercicios'
+                  : 'Seguimiento cronológico del peso corporal del atleta'}
               </p>
             </div>
 
-            {/* Botón terciario */}
-            <Link
-              to="/progreso"
-              className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] hover:opacity-80 transition-opacity font-medium font-inter"
-            >
-              <span>Detalles</span>
-              <span>→</span>
-            </Link>
-          </div>
+            {/* Selector de modo y enlaces */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center p-0.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full text-xs font-inter">
+                <button
+                  onClick={() => setGraficaTab('ejercicios')}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    graficaTab === 'ejercicios'
+                      ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  Cargas
+                </button>
+                <button
+                  onClick={() => setGraficaTab('peso')}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    graficaTab === 'peso'
+                      ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  Peso corporal
+                </button>
+              </div>
 
-          {chartData.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/50">
-              <Dumbbell className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
-              <p className="text-xs font-inter">Aún no hay registros de carga para trazar la curva.</p>
-              <Link to="/progreso" className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] mt-2 font-semibold font-inter">
-                <span>Registrar primera carga</span>
+              <Link
+                to="/progreso"
+                className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] hover:opacity-80 transition-opacity font-medium font-inter ml-1"
+              >
+                <span>Detalles</span>
                 <span>→</span>
               </Link>
             </div>
+          </div>
+
+          {graficaTab === 'ejercicios' ? (
+            chartData.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/50">
+                <Dumbbell className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
+                <p className="text-xs font-inter">Aún no hay registros de carga para trazar la curva.</p>
+                <Link to="/progreso" className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] mt-2 font-semibold font-inter">
+                  <span>Registrar primera carga</span>
+                  <span>→</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="cyberGreen" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#B7FF3B" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#B7FF3B" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
+                    <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
+                    <YAxis stroke="#A0A7B2" fontSize={10} tickLine={false} unit="kg" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1A1F26',
+                        borderColor: '#2E343B',
+                        borderRadius: '12px',
+                        color: '#F5F7FA',
+                        fontSize: '11px',
+                        boxShadow: 'none',
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="peso"
+                      name="Peso de ejercicio"
+                      stroke="#B7FF3B"
+                      strokeWidth={3}
+                      isAnimationActive={true}
+                      animationDuration={1100}
+                      fillOpacity={1}
+                      fill="url(#cyberGreen)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )
           ) : (
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="cyberGreen" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#B7FF3B" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#B7FF3B" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
-                  <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
-                  <YAxis stroke="#A0A7B2" fontSize={10} tickLine={false} unit="kg" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1A1F26',
-                      borderColor: '#2E343B',
-                      borderRadius: '12px',
-                      color: '#F5F7FA',
-                      fontSize: '11px',
-                      boxShadow: 'none',
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="peso"
-                    name="Peso"
-                    stroke="#B7FF3B"
-                    strokeWidth={3}
-                    isAnimationActive={true}
-                    animationDuration={1100}
-                    fillOpacity={1}
-                    fill="url(#cyberGreen)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            chartPesoData.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/50">
+                <Scale className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
+                <p className="text-xs font-inter">Aún no hay registros en la tabla de seguimiento de peso corporal.</p>
+                <button
+                  onClick={abrirModalPeso}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold font-inter hover:brightness-105 active:scale-95 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  Registrar primer pesaje
+                </button>
+              </div>
+            ) : (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartPesoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="bodyWeightGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
+                    <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
+                    <YAxis stroke="#A0A7B2" fontSize={10} tickLine={false} unit="kg" domain={['dataMin - 2', 'dataMax + 2']} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1A1F26',
+                        borderColor: '#2E343B',
+                        borderRadius: '12px',
+                        color: '#F5F7FA',
+                        fontSize: '11px',
+                        boxShadow: 'none',
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="peso"
+                      name="Peso corporal"
+                      stroke="#38bdf8"
+                      strokeWidth={3}
+                      isAnimationActive={true}
+                      animationDuration={1100}
+                      fillOpacity={1}
+                      fill="url(#bodyWeightGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )
           )}
         </div>
 
@@ -326,7 +545,6 @@ export const DashboardPage: React.FC = () => {
               <h2 className="text-sm font-bold text-[var(--text-primary)] font-space tracking-tight">
                 Rutinas activas
               </h2>
-              {/* Botón terciario */}
               <Link to="/rutinas" className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] hover:opacity-80 transition-opacity font-medium font-inter">
                 <span>Ver todas</span>
                 <span>→</span>
@@ -375,6 +593,86 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Actualización Rápida de Peso Corporal */}
+      <Modal
+        isOpen={isPesoModalOpen}
+        onClose={() => {
+          setIsPesoModalOpen(false);
+          setPesoError(null);
+        }}
+        title="Actualizar peso corporal"
+      >
+        <form onSubmit={handleGuardarPeso} className="space-y-4">
+          <p className="text-xs text-[var(--text-secondary)] font-inter">
+            Ingresa tu peso corporal actual. Se actualizará en tu perfil y quedará asentado en el historial de pesajes.
+          </p>
+
+          {pesoError && (
+            <div className="p-3 rounded-xl bg-[var(--accent-error)]/10 border border-[var(--accent-error)]/30 text-[var(--accent-error)] text-xs font-inter">
+              {pesoError}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Peso actual (kg) *
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={pesoInput}
+              onChange={(e) => setPesoInput(e.target.value)}
+              placeholder="Ej. 74.8"
+              required
+              autoFocus
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Fecha del pesaje
+            </label>
+            <input
+              type="date"
+              value={fechaInput}
+              onChange={(e) => setFechaInput(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Observaciones (Opcional)
+            </label>
+            <input
+              type="text"
+              value={notasInput}
+              onChange={(e) => setNotasInput(e.target.value)}
+              placeholder="Ej. En ayunas al despertar"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3">
+            <button
+              type="button"
+              onClick={() => setIsPesoModalOpen(false)}
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={updatePesoMutation.isPending}
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
+            >
+              {updatePesoMutation.isPending ? 'Guardando...' : 'Guardar y registrar'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

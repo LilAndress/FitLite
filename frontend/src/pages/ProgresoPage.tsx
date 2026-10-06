@@ -10,15 +10,21 @@ import {
   Dumbbell, 
   Filter, 
   TrendingUp, 
+  TrendingDown,
   AlertCircle,
   Activity,
   Layers,
-  Award
+  Award,
+  Scale,
+  Calendar,
+  FileText
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
   LineChart, 
   Line, 
+  AreaChart,
+  Area,
   XAxis, 
   YAxis, 
   Tooltip, 
@@ -27,6 +33,7 @@ import {
 } from 'recharts';
 import { useUser } from '../context/UserContext';
 import { progresosApi } from '../api/progresos.api';
+import { pesosCorporalesApi } from '../api/pesos.api';
 import { rutinasApi } from '../api/rutinas.api';
 import { ejerciciosApi } from '../api/ejercicios.api';
 import { Modal } from '../components/Modal';
@@ -40,13 +47,22 @@ const progresoSchema = z.object({
   pesoRealizado: z.coerce.number().min(0, 'El peso no puede ser negativo'),
 });
 
+const pesoCorporalSchema = z.object({
+  fecha: z.string().min(1, 'La fecha es obligatoria'),
+  peso: z.coerce.number().positive('El peso debe ser mayor a 0 kg'),
+  notas: z.string().optional(),
+});
+
 type ProgresoFormValues = z.infer<typeof progresoSchema>;
+type PesoCorporalFormValues = z.infer<typeof pesoCorporalSchema>;
 
 export const ProgresoPage: React.FC = () => {
-  const { activeUser } = useUser();
+  const { activeUser, refreshUsers } = useUser();
   const queryClient = useQueryClient();
 
+  const [activeTab, setActiveTab] = useState<'cargas' | 'pesoCorporal'>('cargas');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPesoModalOpen, setIsPesoModalOpen] = useState(false);
   const [filtroEjercicioId, setFiltroEjercicioId] = useState<string>('all');
 
   // Queries
@@ -56,13 +72,18 @@ export const ProgresoPage: React.FC = () => {
     enabled: Boolean(activeUser),
   });
 
+  const { data: historialPesos = [], isLoading: isLoadingPesos } = useQuery({
+    queryKey: ['pesosCorporales', activeUser?.id],
+    queryFn: () => (activeUser ? pesosCorporalesApi.getByUsuario(activeUser.id) : Promise.resolve([])),
+    enabled: Boolean(activeUser),
+  });
+
   const { data: rutinas = [] } = useQuery({
     queryKey: ['rutinas', activeUser?.id],
     queryFn: () => (activeUser ? rutinasApi.getByUsuario(activeUser.id) : Promise.resolve([])),
     enabled: Boolean(activeUser),
   });
 
-  // Fetch exercises from all routines of active user using useQuery
   const { data: ejerciciosDisponibles = [] } = useQuery({
     queryKey: ['ejerciciosDisponibles', rutinas.map((r) => r.id).join(',')],
     queryFn: async () => {
@@ -74,13 +95,13 @@ export const ProgresoPage: React.FC = () => {
     enabled: rutinas.length > 0,
   });
 
-  // Form setup
+  // Forms setup
   const todayStr = new Date().toISOString().split('T')[0];
   const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
+    register: registerProgreso,
+    handleSubmit: handleSubmitProgreso,
+    reset: resetProgreso,
+    formState: { errors: errorsProgreso },
   } = useForm<ProgresoFormValues>({
     resolver: zodResolver(progresoSchema),
     defaultValues: {
@@ -88,6 +109,20 @@ export const ProgresoPage: React.FC = () => {
       seriesRealizadas: 4,
       repeticionesRealizadas: 10,
       pesoRealizado: 20,
+    },
+  });
+
+  const {
+    register: registerPeso,
+    handleSubmit: handleSubmitPeso,
+    reset: resetPeso,
+    formState: { errors: errorsPeso },
+  } = useForm<PesoCorporalFormValues>({
+    resolver: zodResolver(pesoCorporalSchema),
+    defaultValues: {
+      fecha: todayStr,
+      peso: activeUser?.pesoActual || 70,
+      notas: '',
     },
   });
 
@@ -103,7 +138,7 @@ export const ProgresoPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['progresos', activeUser?.id] });
       setIsModalOpen(false);
-      reset();
+      resetProgreso();
     },
   });
 
@@ -111,6 +146,32 @@ export const ProgresoPage: React.FC = () => {
     mutationFn: (id: number) => progresosApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['progresos', activeUser?.id] });
+    },
+  });
+
+  const createPesoMutation = useMutation({
+    mutationFn: (data: PesoCorporalFormValues) => {
+      if (!activeUser) throw new Error('No user selected');
+      return pesosCorporalesApi.create({
+        peso: data.peso,
+        fecha: data.fecha,
+        usuarioId: activeUser.id,
+        notas: data.notas?.trim() || undefined,
+      });
+    },
+    onSuccess: async () => {
+      await refreshUsers();
+      queryClient.invalidateQueries({ queryKey: ['pesosCorporales', activeUser?.id] });
+      setIsPesoModalOpen(false);
+      resetPeso();
+    },
+  });
+
+  const deletePesoMutation = useMutation({
+    mutationFn: (id: number) => pesosCorporalesApi.delete(id),
+    onSuccess: async () => {
+      await refreshUsers();
+      queryClient.invalidateQueries({ queryKey: ['pesosCorporales', activeUser?.id] });
     },
   });
 
@@ -126,14 +187,13 @@ export const ProgresoPage: React.FC = () => {
     );
   }
 
-  // Filtered progress
+  // Filtered progress for exercises
   const filteredProgresos =
     filtroEjercicioId === 'all'
       ? progresos
       : progresos.filter((p) => p.ejercicioId === Number(filtroEjercicioId));
 
-  // Chart data: chronological order
-  const chartData = [...filteredProgresos]
+  const chartDataProgresos = [...filteredProgresos]
     .reverse()
     .map((p) => ({
       fecha: p.fecha.slice(5),
@@ -143,220 +203,464 @@ export const ProgresoPage: React.FC = () => {
       ejercicio: p.ejercicioNombre,
     }));
 
-  const maxPeso = progresos.length > 0 ? Math.max(...progresos.map((p) => p.pesoRealizado || 0)) : 0;
+  const maxPesoEjercicio = progresos.length > 0 ? Math.max(...progresos.map((p) => p.pesoRealizado || 0)) : 0;
   const totalSeries = progresos.reduce((acc, p) => acc + p.seriesRealizadas, 0);
+
+  // Body weight calculations & chart
+  const chartDataPesos = [...historialPesos]
+    .reverse()
+    .map((p) => ({
+      fecha: p.fecha.slice(5),
+      peso: p.peso,
+      notas: p.notas || '',
+    }));
+
+  const pesoActual = activeUser?.pesoActual ?? (historialPesos.length > 0 ? historialPesos[0].peso : null);
+  const pesoInicial = historialPesos.length > 0 ? historialPesos[historialPesos.length - 1].peso : pesoActual;
+  const variacionTotal = pesoActual !== null && pesoInicial !== null ? Number((pesoActual - pesoInicial).toFixed(1)) : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Header */}
+      {/* Header with Switcher Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] font-space flex items-center gap-3 tracking-tight">
-            <LineChartIcon className="w-6 h-6 text-[var(--accent-primary)]" strokeWidth={2} />
-            Métricas y progresión de cargas
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-[var(--text-primary)] font-space flex items-center gap-2.5 tracking-tight">
+              {activeTab === 'cargas' ? (
+                <LineChartIcon className="w-6 h-6 text-[var(--accent-primary)]" strokeWidth={2} />
+              ) : (
+                <Scale className="w-6 h-6 text-[var(--accent-primary)]" strokeWidth={2} />
+              )}
+              {activeTab === 'cargas' ? 'Métricas y sobrecarga de cargas' : 'Seguimiento de peso corporal'}
+            </h1>
+          </div>
           <p className="text-xs text-[var(--text-secondary)] font-inter mt-1">
-            Visualización de sobrecarga progresiva en peso y repeticiones.
+            {activeTab === 'cargas'
+              ? 'Visualización de progresión en pesos y repeticiones de ejercicios.'
+              : 'Historial cronológico de pesajes y evolución del peso corporal del atleta.'}
           </p>
         </div>
 
-        {/* Primary Pill Button */}
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all self-start sm:self-auto font-inter"
-        >
-          <Plus className="w-4 h-4" strokeWidth={2.5} />
-          Registrar sesión
-        </button>
-      </div>
-
-      {/* Tarjetas de Estadística con Icono Outline a la Izquierda y Variación */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <StatCard
-          title="Carga máxima"
-          value={maxPeso}
-          decimals={1}
-          suffix=" kg"
-          icon={Award}
-          variation={{ type: 'positive', text: '+Sobrecarga' }}
-          subtitle="Mayor peso superado en entrenamiento"
-          isPrimary={true}
-        />
-
-        <StatCard
-          title="Series acumuladas"
-          value={totalSeries}
-          decimals={0}
-          suffix=" series"
-          icon={Layers}
-          variation={{ type: 'positive', text: '+Volumen' }}
-          subtitle="Total de series ejecutadas con éxito"
-        />
-
-        <StatCard
-          title="Sesiones registradas"
-          value={progresos.length}
-          decimals={0}
-          icon={Activity}
-          variation={{ type: 'positive', text: 'Activo' }}
-          subtitle="Registro cronológico continuo"
-        />
-      </div>
-
-      {/* Contenedor del Gráfico con Animación de Trazo */}
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
-          <div>
-            <h2 className="text-sm font-bold text-[var(--text-primary)] font-space flex items-center gap-2 tracking-tight">
-              <TrendingUp className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
-              Curva de sobrecarga progresiva
-            </h2>
-            <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
-              Evolución cronológica de carga (kg) en línea sólida y repeticiones en línea discontinua.
-            </p>
-          </div>
-
-          {/* Exercise Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-[var(--text-secondary)]" strokeWidth={2} />
-            <select
-              value={filtroEjercicioId}
-              onChange={(e) => setFiltroEjercicioId(e.target.value)}
-              className="px-3.5 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-xs text-[var(--text-primary)] font-inter focus:outline-none focus:border-[var(--accent-primary)]"
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Segmented Control Tabs */}
+          <div className="flex items-center p-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-inter">
+            <button
+              onClick={() => setActiveTab('cargas')}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-medium transition-all ${
+                activeTab === 'cargas'
+                  ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold shadow-sm'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
             >
-              <option value="all">Todos los ejercicios</option>
-              {ejerciciosDisponibles.map((ej) => (
-                <option key={ej.id} value={ej.id}>
-                  {ej.nombre} ({ej.rutinaNombre})
-                </option>
-              ))}
-            </select>
+              <Dumbbell className="w-3.5 h-3.5" />
+              <span>Cargas de ejercicio</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('pesoCorporal')}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-medium transition-all ${
+                activeTab === 'pesoCorporal'
+                  ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold shadow-sm'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Scale className="w-3.5 h-3.5" />
+              <span>Peso corporal</span>
+            </button>
           </div>
-        </div>
 
-        {chartData.length === 0 ? (
-          <div className="h-72 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/40">
-            <Dumbbell className="w-10 h-10 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
-            <p className="text-xs font-inter">No hay datos registrados con este filtro para graficar.</p>
-          </div>
-        ) : (
-          <div className="h-80 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
-                <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
-                <YAxis yAxisId="left" stroke="#B7FF3B" fontSize={10} tickLine={false} unit="kg" />
-                <YAxis yAxisId="right" orientation="right" stroke="#FF8A3D" fontSize={10} tickLine={false} unit=" reps" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1A1F26',
-                    borderColor: '#2E343B',
-                    borderRadius: '12px',
-                    color: '#F5F7FA',
-                    fontSize: '11px',
-                    boxShadow: 'none',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                {/* Trazo animado de línea principal en --accent-primary */}
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="peso"
-                  name="Peso (kg)"
-                  stroke="#B7FF3B"
-                  strokeWidth={3}
-                  isAnimationActive={true}
-                  animationDuration={1300}
-                  dot={{ r: 4, fill: '#B7FF3B', stroke: '#0D1117', strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: '#B7FF3B' }}
-                />
-                {/* Trazo animado de repeticiones en --accent-secondary */}
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="reps"
-                  name="Repeticiones"
-                  stroke="#FF8A3D"
-                  strokeWidth={2}
-                  strokeDasharray="4 4"
-                  isAnimationActive={true}
-                  animationDuration={1300}
-                  dot={{ r: 3, fill: '#FF8A3D' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+          {/* Primary Action Button */}
+          {activeTab === 'cargas' ? (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              Registrar sesión
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                resetPeso({
+                  fecha: todayStr,
+                  peso: pesoActual || 70,
+                  notas: '',
+                });
+                setIsPesoModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              Registrar pesaje
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Historial Table */}
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[var(--text-primary)] font-space tracking-tight">Historial de sesiones</h3>
-          <span className="text-xs text-[var(--text-secondary)] font-space tabular-nums">
-            {filteredProgresos.length} registros
-          </span>
-        </div>
+      {activeTab === 'cargas' ? (
+        /* VISTA 1: CARGAS DE EJERCICIO */
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <StatCard
+              title="Carga máxima"
+              value={maxPesoEjercicio}
+              decimals={1}
+              suffix=" kg"
+              icon={Award}
+              variation={{ type: 'positive', text: '+Sobrecarga' }}
+              subtitle="Mayor peso superado en entrenamiento"
+              isPrimary={true}
+            />
 
-        {isLoadingProgresos ? (
-          <div className="p-8 text-center text-xs text-[var(--text-secondary)] font-inter">Cargando registros...</div>
-        ) : filteredProgresos.length === 0 ? (
-          <div className="p-8 text-center text-xs text-[var(--text-secondary)] font-inter">
-            No se han registrado sesiones de entrenamiento para este perfil todavía.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-[var(--text-primary)]">
-              <thead className="bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] text-xs border-b border-[var(--border)] font-space">
-                <tr>
-                  <th className="py-3 px-5 font-semibold">Fecha</th>
-                  <th className="py-3 px-5 font-semibold">Ejercicio</th>
-                  <th className="py-3 px-5 font-semibold text-center">Series</th>
-                  <th className="py-3 px-5 font-semibold text-center">Reps</th>
-                  <th className="py-3 px-5 font-semibold text-right">Peso (kg)</th>
-                  <th className="py-3 px-5 text-center font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)] font-inter">
-                {filteredProgresos.map((p) => (
-                  <tr key={p.id} className="hover:bg-[var(--bg-primary)]/50 transition-colors">
-                    <td className="py-3.5 px-5 font-medium text-[var(--text-primary)] font-space tabular-nums">{p.fecha}</td>
-                    <td className="py-3.5 px-5 font-medium text-[var(--text-primary)]">
-                      <div className="flex items-center gap-2">
-                        <Dumbbell className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
-                        <span>{p.ejercicioNombre}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.seriesRealizadas}</td>
-                    <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.repeticionesRealizadas}</td>
-                    <td className="py-3.5 px-5 text-right font-bold text-[var(--accent-primary)] font-space tabular-nums">
-                      {p.pesoRealizado || 0} kg
-                    </td>
-                    <td className="py-3.5 px-5 text-center">
-                      <button
-                        onClick={() => deleteProgresoMutation.mutate(p.id)}
-                        className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors"
-                        title="Eliminar registro"
-                      >
-                        <Trash2 className="w-4 h-4" strokeWidth={2} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+            <StatCard
+              title="Series acumuladas"
+              value={totalSeries}
+              decimals={0}
+              suffix=" series"
+              icon={Layers}
+              variation={{ type: 'positive', text: '+Volumen' }}
+              subtitle="Total de series ejecutadas con éxito"
+            />
 
-      {/* Modal Registrar Progreso */}
+            <StatCard
+              title="Sesiones registradas"
+              value={progresos.length}
+              decimals={0}
+              icon={Activity}
+              variation={{ type: 'positive', text: 'Activo' }}
+              subtitle="Registro cronológico continuo"
+            />
+          </div>
+
+          {/* Gráfico de Progresión de Cargas */}
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
+              <div>
+                <h2 className="text-sm font-bold text-[var(--text-primary)] font-space flex items-center gap-2 tracking-tight">
+                  <Activity className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
+                  Curva de sobrecarga progresiva
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
+                  Progresión lineal de kilajes levantados
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-[var(--text-secondary)]" strokeWidth={2} />
+                <select
+                  value={filtroEjercicioId}
+                  onChange={(e) => setFiltroEjercicioId(e.target.value)}
+                  className="px-3 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+                >
+                  <option value="all">Todos los ejercicios ({ejerciciosDisponibles.length})</option>
+                  {ejerciciosDisponibles.map((ej) => (
+                    <option key={ej.id} value={ej.id}>
+                      {ej.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {chartDataProgresos.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/40">
+                <Dumbbell className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
+                <p className="text-xs font-inter">No hay datos suficientes para trazar la curva.</p>
+              </div>
+            ) : (
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartDataProgresos} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
+                    <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#A0A7B2" fontSize={11} tickLine={false} unit="kg" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1A1F26',
+                        borderColor: '#2E343B',
+                        borderRadius: '12px',
+                        color: '#F5F7FA',
+                        fontSize: '11px',
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                    <Line
+                      type="monotone"
+                      dataKey="peso"
+                      name="Peso levantado (kg)"
+                      stroke="#B7FF3B"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#B7FF3B', stroke: '#1A1F26', strokeWidth: 2 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Tabla de Registros de Ejercicios */}
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)] font-space">
+                  Bitácora de cargas de ejercicio
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
+                  {filteredProgresos.length} sesiones registradas
+                </p>
+              </div>
+            </div>
+
+            {isLoadingProgresos ? (
+              <div className="p-8 text-center text-xs text-[var(--text-secondary)] font-inter">Cargando registros...</div>
+            ) : filteredProgresos.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[var(--text-secondary)] font-inter">
+                No se han registrado sesiones de entrenamiento para este perfil todavía.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                  <thead className="bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] text-xs border-b border-[var(--border)] font-space">
+                    <tr>
+                      <th className="py-3 px-5 font-semibold">Fecha</th>
+                      <th className="py-3 px-5 font-semibold">Ejercicio</th>
+                      <th className="py-3 px-5 font-semibold text-center">Series</th>
+                      <th className="py-3 px-5 font-semibold text-center">Reps</th>
+                      <th className="py-3 px-5 font-semibold text-right">Peso (kg)</th>
+                      <th className="py-3 px-5 text-center font-semibold">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)] font-inter">
+                    {filteredProgresos.map((p) => (
+                      <tr key={p.id} className="hover:bg-[var(--bg-primary)]/50 transition-colors">
+                        <td className="py-3.5 px-5 font-medium text-[var(--text-primary)] font-space tabular-nums">{p.fecha}</td>
+                        <td className="py-3.5 px-5 font-medium text-[var(--text-primary)]">
+                          <div className="flex items-center gap-2">
+                            <Dumbbell className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
+                            <span>{p.ejercicioNombre}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.seriesRealizadas}</td>
+                        <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.repeticionesRealizadas}</td>
+                        <td className="py-3.5 px-5 text-right font-bold text-[var(--accent-primary)] font-space tabular-nums">
+                          {p.pesoRealizado || 0} kg
+                        </td>
+                        <td className="py-3.5 px-5 text-center">
+                          <button
+                            onClick={() => deleteProgresoMutation.mutate(p.id)}
+                            className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors"
+                            title="Eliminar registro"
+                          >
+                            <Trash2 className="w-4 h-4" strokeWidth={2} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        /* VISTA 2: SEGUIMIENTO DE PESO CORPORAL HISTÓRICO */
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <StatCard
+              title="Peso corporal actual"
+              value={pesoActual || 0}
+              decimals={1}
+              suffix=" kg"
+              icon={Scale}
+              variation={{
+                type: variacionTotal !== null && variacionTotal <= 0 ? 'positive' : 'negative',
+                text: variacionTotal !== null ? `${variacionTotal > 0 ? '+' : ''}${variacionTotal} kg neto` : 'Inicial'
+              }}
+              subtitle="Valor sincronizado con el perfil"
+              isPrimary={true}
+            />
+
+            <StatCard
+              title="Pesajes registrados"
+              value={historialPesos.length}
+              decimals={0}
+              icon={Calendar}
+              variation={{ type: 'positive', text: 'Historial' }}
+              subtitle="Puntos de control antropométrico"
+            />
+
+            <StatCard
+              title="Peso de partida"
+              value={pesoInicial || 0}
+              decimals={1}
+              suffix=" kg"
+              icon={Award}
+              variation={{ type: 'positive', text: 'Referencia' }}
+              subtitle="Primer pesaje registrado en la base"
+            />
+          </div>
+
+          {/* Gráfico de Evolución de Peso Corporal */}
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
+              <div>
+                <h2 className="text-sm font-bold text-[var(--text-primary)] font-space flex items-center gap-2 tracking-tight">
+                  <Scale className="w-4 h-4 text-[#38bdf8]" strokeWidth={2} />
+                  Curva de seguimiento de peso corporal (kg)
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
+                  Evolución cronológica de masa corporal
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsPesoModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-xs text-[var(--text-primary)] hover:border-[var(--accent-primary)] transition-all font-inter"
+              >
+                <Plus className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                <span>Nuevo pesaje</span>
+              </button>
+            </div>
+
+            {chartDataPesos.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/40">
+                <Scale className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
+                <p className="text-xs font-inter">No hay registros de peso corporal todavía.</p>
+                <button
+                  onClick={() => setIsPesoModalOpen(true)}
+                  className="mt-3 px-4 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold font-inter hover:brightness-105 active:scale-95 transition-all"
+                >
+                  Registrar primer pesaje
+                </button>
+              </div>
+            ) : (
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartDataPesos} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="bodyWeightPageGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
+                    <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#A0A7B2" fontSize={11} tickLine={false} unit="kg" domain={['dataMin - 2', 'dataMax + 2']} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1A1F26',
+                        borderColor: '#2E343B',
+                        borderRadius: '12px',
+                        color: '#F5F7FA',
+                        fontSize: '11px',
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                    <Area
+                      type="monotone"
+                      dataKey="peso"
+                      name="Peso corporal (kg)"
+                      stroke="#38bdf8"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#bodyWeightPageGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Tabla de Historial de Peso Corporal */}
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)] font-space">
+                  Tabla de seguimiento de peso corporal
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
+                  {historialPesos.length} pesajes registrados en el histórico
+                </p>
+              </div>
+            </div>
+
+            {isLoadingPesos ? (
+              <div className="p-8 text-center text-xs text-[var(--text-secondary)] font-inter">Cargando histórico...</div>
+            ) : historialPesos.length === 0 ? (
+              <div className="p-8 text-center text-xs text-[var(--text-secondary)] font-inter">
+                No hay pesajes registrados en el histórico de este atleta.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                  <thead className="bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] text-xs border-b border-[var(--border)] font-space">
+                    <tr>
+                      <th className="py-3 px-5 font-semibold">Fecha</th>
+                      <th className="py-3 px-5 font-semibold text-right">Peso registrado</th>
+                      <th className="py-3 px-5 font-semibold text-center">Variación</th>
+                      <th className="py-3 px-5 font-semibold">Notas / Observaciones</th>
+                      <th className="py-3 px-5 text-center font-semibold">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)] font-inter">
+                    {historialPesos.map((pesoItem, idx) => {
+                      const sig = historialPesos[idx + 1];
+                      const diff = sig ? Number((pesoItem.peso - sig.peso).toFixed(1)) : null;
+                      return (
+                        <tr key={pesoItem.id} className="hover:bg-[var(--bg-primary)]/50 transition-colors">
+                          <td className="py-3.5 px-5 font-medium text-[var(--text-primary)] font-space tabular-nums">
+                            {pesoItem.fecha}
+                          </td>
+                          <td className="py-3.5 px-5 text-right font-bold text-[#38bdf8] font-space tabular-nums text-sm">
+                            {pesoItem.peso} kg
+                          </td>
+                          <td className="py-3.5 px-5 text-center font-space tabular-nums">
+                            {diff !== null ? (
+                              <span className={`inline-flex items-center gap-1 font-semibold text-xs ${diff > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                {diff > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                {diff > 0 ? `+${diff}` : `${diff}`} kg
+                              </span>
+                            ) : (
+                              <span className="text-[var(--text-secondary)] text-[11px] font-normal">Inicial</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-5 text-[var(--text-secondary)] font-inter">
+                            {pesoItem.notas ? (
+                              <span className="flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" />
+                                <span>{pesoItem.notas}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[var(--text-secondary)]/50 italic">Sin observaciones</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-5 text-center">
+                            <button
+                              onClick={() => deletePesoMutation.mutate(pesoItem.id)}
+                              className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors"
+                              title="Eliminar pesaje"
+                            >
+                              <Trash2 className="w-4 h-4" strokeWidth={2} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Modal Registrar Progreso de Carga de Ejercicio */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Registrar sesión de entrenamiento"
       >
-        <form onSubmit={handleSubmit((data) => createProgresoMutation.mutate(data))} className="space-y-4">
+        <form onSubmit={handleSubmitProgreso((data) => createProgresoMutation.mutate(data))} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
               Ejercicio *
@@ -367,7 +671,7 @@ export const ProgresoPage: React.FC = () => {
               </p>
             ) : (
               <select
-                {...register('ejercicioId')}
+                {...registerProgreso('ejercicioId')}
                 className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
               >
                 <option value="">Selecciona un ejercicio...</option>
@@ -378,8 +682,8 @@ export const ProgresoPage: React.FC = () => {
                 ))}
               </select>
             )}
-            {errors.ejercicioId && (
-              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errors.ejercicioId.message}</p>
+            {errorsProgreso.ejercicioId && (
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errorsProgreso.ejercicioId.message}</p>
             )}
           </div>
 
@@ -389,11 +693,11 @@ export const ProgresoPage: React.FC = () => {
             </label>
             <input
               type="date"
-              {...register('fecha')}
+              {...registerProgreso('fecha')}
               className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
-            {errors.fecha && (
-              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errors.fecha.message}</p>
+            {errorsProgreso.fecha && (
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errorsProgreso.fecha.message}</p>
             )}
           </div>
 
@@ -404,11 +708,11 @@ export const ProgresoPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                {...register('seriesRealizadas')}
+                {...registerProgreso('seriesRealizadas')}
                 className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
-              {errors.seriesRealizadas && (
-                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errors.seriesRealizadas.message}</p>
+              {errorsProgreso.seriesRealizadas && (
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errorsProgreso.seriesRealizadas.message}</p>
               )}
             </div>
 
@@ -418,11 +722,11 @@ export const ProgresoPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                {...register('repeticionesRealizadas')}
+                {...registerProgreso('repeticionesRealizadas')}
                 className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
-              {errors.repeticionesRealizadas && (
-                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errors.repeticionesRealizadas.message}</p>
+              {errorsProgreso.repeticionesRealizadas && (
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errorsProgreso.repeticionesRealizadas.message}</p>
               )}
             </div>
 
@@ -433,11 +737,11 @@ export const ProgresoPage: React.FC = () => {
               <input
                 type="number"
                 step="0.5"
-                {...register('pesoRealizado')}
+                {...registerProgreso('pesoRealizado')}
                 className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-space font-medium text-center focus:outline-none focus:border-[var(--accent-primary)] tabular-nums"
               />
-              {errors.pesoRealizado && (
-                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errors.pesoRealizado.message}</p>
+              {errorsProgreso.pesoRealizado && (
+                <p className="text-[10px] text-[var(--accent-error)] mt-1 font-inter">{errorsProgreso.pesoRealizado.message}</p>
               )}
             </div>
           </div>
@@ -456,6 +760,79 @@ export const ProgresoPage: React.FC = () => {
               className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
             >
               {createProgresoMutation.isPending ? 'Guardando...' : 'Guardar sesión'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Registrar Pesaje Corporal */}
+      <Modal
+        isOpen={isPesoModalOpen}
+        onClose={() => setIsPesoModalOpen(false)}
+        title="Registrar pesaje corporal"
+      >
+        <form onSubmit={handleSubmitPeso((data) => createPesoMutation.mutate(data))} className="space-y-4">
+          <p className="text-xs text-[var(--text-secondary)] font-inter">
+            Registra una nueva medición de peso. Se actualizará en tu perfil y quedará asentado en la tabla de seguimiento histórico.
+          </p>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Peso corporal (kg) *
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              {...registerPeso('peso')}
+              placeholder="Ej. 76.5"
+              autoFocus
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+            />
+            {errorsPeso.peso && (
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errorsPeso.peso.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Fecha de pesaje *
+            </label>
+            <input
+              type="date"
+              {...registerPeso('fecha')}
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+            />
+            {errorsPeso.fecha && (
+              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{errorsPeso.fecha.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Notas u observaciones (Opcional)
+            </label>
+            <input
+              type="text"
+              {...registerPeso('notas')}
+              placeholder="Ej. Ayunas, tras sesión de piernas"
+              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3">
+            <button
+              type="button"
+              onClick={() => setIsPesoModalOpen(false)}
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={createPesoMutation.isPending}
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
+            >
+              {createPesoMutation.isPending ? 'Registrando...' : 'Registrar pesaje'}
             </button>
           </div>
         </form>
