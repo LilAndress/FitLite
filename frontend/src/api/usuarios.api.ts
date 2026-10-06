@@ -37,4 +37,9 @@ export const usuariosApi = {
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/usuarios/${id}`);
   },
+
+  toggleEstado: async (id: number): Promise<Usuario> => {
+    const { data } = await apiClient.patch<Usuario>(`/usuarios/${id}/estado`);
+    return data;
+  },
 };

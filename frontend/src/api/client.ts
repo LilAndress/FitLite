@@ -6,7 +6,23 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
+apiClient.interceptors.request.use((config) => {
+  try {
+    const saved = localStorage.getItem('fitlite_active_user');
+    if (saved) {
+      const user = JSON.parse(saved);
+      if (user.id) {
+        config.headers['X-User-Id'] = String(user.id);
+      }
+      if (user.rol) {
+        config.headers['X-User-Role'] = user.rol;
+      }
+    }
+  } catch (err) {
+    console.error('Error reading active user for request headers:', err);
+  }
+  return config;
+});
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

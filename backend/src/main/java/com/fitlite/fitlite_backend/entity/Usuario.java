@@ -53,6 +53,12 @@ public class Usuario {
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro = LocalDateTime.now();
 
+    @Column(name = "activo", nullable = false)
+    private Boolean activo = true;
+
+    @Column(name = "ultimo_acceso")
+    private LocalDateTime ultimoAcceso;
+
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     private List<Rutina> rutinas = new ArrayList<>();
 

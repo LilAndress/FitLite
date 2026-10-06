@@ -41,24 +41,30 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUsers = useCallback(async () => {
     try {
       setIsLoadingUsers(true);
-      const data = await usuariosApi.getAll();
-      setUsers(data);
-      if (data.length > 0) {
-        setActiveUserState((current) => {
-          if (!current) {
-            return null;
-          }
-          const updatedCurrent = data.find((u) => u.id === current.id);
-          if (updatedCurrent) {
-            localStorage.setItem('fitlite_active_user', JSON.stringify(updatedCurrent));
-            return updatedCurrent;
-          }
-          localStorage.removeItem('fitlite_active_user');
-          return null;
-        });
-      } else {
+      const saved = localStorage.getItem('fitlite_active_user');
+      const currentUser: Usuario | null = saved ? JSON.parse(saved) : null;
+
+      if (!currentUser) {
+        setUsers([]);
         setActiveUserState(null);
-        localStorage.removeItem('fitlite_active_user');
+        return;
+      }
+
+      if (currentUser.rol === 'ADMIN') {
+        const data = await usuariosApi.getAll();
+        setUsers(data);
+        const updatedCurrent = data.find((u) => u.id === currentUser.id);
+        if (updatedCurrent) {
+          setActiveUserState(updatedCurrent);
+          localStorage.setItem('fitlite_active_user', JSON.stringify(updatedCurrent));
+        }
+      } else {
+        const updatedCurrent = await usuariosApi.getById(currentUser.id);
+        if (updatedCurrent) {
+          setActiveUserState(updatedCurrent);
+          localStorage.setItem('fitlite_active_user', JSON.stringify(updatedCurrent));
+        }
+        setUsers([]);
       }
     } catch (err) {
       console.error('Error fetching users:', err);

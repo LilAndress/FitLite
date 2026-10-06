@@ -43,6 +43,7 @@ public class UsuarioService {
         usuario.setEstatura(request.getEstatura());
         usuario.setNivelExperiencia(request.getNivelExperiencia());
         usuario.setFechaRegistro(LocalDateTime.now());
+        usuario.setActivo(true);
 
         Usuario guardado = usuarioRepository.save(usuario);
 
@@ -59,7 +60,7 @@ public class UsuarioService {
         return mapToResponse(guardado);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public UsuarioResponseDTO login(LoginRequestDTO request) {
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("No existe ninguna cuenta asociada a este correo electrónico"));
@@ -68,7 +69,15 @@ public class UsuarioService {
             throw new IllegalArgumentException("Contraseña incorrecta");
         }
 
-        return mapToResponse(usuario);
+        if (Boolean.FALSE.equals(usuario.getActivo())) {
+            throw new com.fitlite.fitlite_backend.exception.AccesoDenegadoException(
+                    "Esta cuenta se encuentra desactivada. Contacta al administrador para reactivar tu acceso.");
+        }
+
+        usuario.setUltimoAcceso(LocalDateTime.now());
+        Usuario guardado = usuarioRepository.save(usuario);
+
+        return mapToResponse(guardado);
     }
 
     @Transactional(readOnly = true)
@@ -163,6 +172,15 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
     }
 
+    @Transactional
+    public UsuarioResponseDTO toggleEstadoActivo(Long id) {
+        Usuario usuario = buscarEntidadPorId(id);
+        boolean nuevoEstado = usuario.getActivo() != null && !usuario.getActivo();
+        usuario.setActivo(nuevoEstado);
+        Usuario guardado = usuarioRepository.save(usuario);
+        return mapToResponse(guardado);
+    }
+
     public UsuarioResponseDTO mapToResponse(Usuario usuario) {
         return UsuarioResponseDTO.builder()
                 .id(usuario.getId())
@@ -170,6 +188,8 @@ public class UsuarioService {
                 .email(usuario.getEmail())
                 .objetivo(usuario.getObjetivo())
                 .rol(usuario.getRol())
+                .activo(usuario.getActivo() != null ? usuario.getActivo() : true)
+                .ultimoAcceso(usuario.getUltimoAcceso())
                 .pesoActual(usuario.getPesoActual())
                 .edad(usuario.getEdad())
                 .estatura(usuario.getEstatura())

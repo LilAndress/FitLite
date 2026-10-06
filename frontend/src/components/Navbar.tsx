@@ -4,14 +4,14 @@ import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, Use
 import { useUser } from '../context/UserContext';
 
 export const Navbar: React.FC = () => {
-  const { activeUser, users, setActiveUser, logout } = useUser();
+  const { activeUser, logout } = useUser();
   const navigate = useNavigate();
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Rutinas', path: '/rutinas', icon: Calendar },
     { label: 'Progreso', path: '/progreso', icon: LineChart },
-    { label: 'Usuarios', path: '/usuarios', icon: Users },
+    ...(activeUser?.rol === 'ADMIN' ? [{ label: 'Usuarios', path: '/usuarios', icon: Users }] : []),
   ];
 
   return (
@@ -65,7 +65,7 @@ export const Navbar: React.FC = () => {
             })}
           </nav>
 
-          {/* User Selector Dropdown */}
+          {/* User Profile Dropdown */}
           <div className="flex items-center gap-3">
             <div className="relative group">
               <button className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] hover:border-[var(--accent-primary)]/50 transition-all text-left">
@@ -77,54 +77,61 @@ export const Navbar: React.FC = () => {
                     {activeUser ? activeUser.nombre : 'Sin usuario'}
                   </p>
                   <p className="text-[10px] text-[var(--accent-secondary)] font-medium font-inter capitalize">
-                    {activeUser ? activeUser.objetivo.toLowerCase().replace('_', ' ') : 'Seleccionar'}
+                    {activeUser ? (activeUser.rol === 'ADMIN' ? 'Admin' : activeUser.objetivo.toLowerCase().replace('_', ' ')) : 'Acceso'}
                   </p>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[var(--accent-primary)] transition-colors" strokeWidth={2} />
               </button>
 
               {/* Dropdown Menu */}
-              <div className="absolute right-0 mt-2 w-56 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
-                <div className="px-4 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] font-inter border-b border-[var(--border)]">
-                  Cambiar usuario activo
+              <div className="absolute right-0 mt-2 w-64 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+                {/* Perfil del usuario activo */}
+                <div className="px-2 py-2 border-b border-[var(--border)] mb-2">
+                  <p className="text-xs font-semibold text-[var(--text-primary)] font-space truncate">
+                    {activeUser?.nombre}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-secondary)] font-inter truncate">
+                    {activeUser?.email}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-space tracking-wide ${
+                      activeUser?.rol === 'ADMIN'
+                        ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border border-[var(--accent-primary)]/40'
+                        : 'bg-[var(--accent-secondary)]/15 text-[var(--accent-secondary)] border border-[var(--accent-secondary)]/40'
+                    }`}>
+                      ROL: {activeUser?.rol || 'USUARIO'}
+                    </span>
+                  </div>
                 </div>
-                {users.length === 0 ? (
-                  <div className="px-4 py-3 text-xs text-[var(--text-secondary)] font-inter">No hay usuarios</div>
-                ) : (
-                  users.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => setActiveUser(u)}
-                      className={`w-full text-left px-4 py-2 text-xs flex items-center justify-between hover:bg-[var(--bg-primary)] transition-colors ${
-                        activeUser?.id === u.id ? 'text-[var(--accent-primary)] font-semibold bg-[var(--bg-primary)]/80' : 'text-[var(--text-primary)]'
-                      }`}
-                    >
-                      <span className="truncate font-inter">{u.nombre}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--border)]/60 text-[var(--text-secondary)] font-space">
-                        #{u.id}
-                      </span>
-                    </button>
-                  ))
-                )}
-                <div className="border-t border-[var(--border)] mt-1.5 pt-1.5 px-2 space-y-1">
+
+                {/* Acceso a Gestión de Usuarios SOLO si es ADMIN */}
+                {activeUser?.rol === 'ADMIN' && (
                   <Link
                     to="/usuarios"
-                    className="flex items-center justify-between px-3 py-1.5 rounded-full text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter"
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter mb-1"
                   >
-                    <span>Gestionar usuarios</span>
+                    <span className="flex items-center gap-2">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Gestionar usuarios</span>
+                    </span>
                     <span>→</span>
                   </Link>
-                  <button
-                    onClick={() => {
-                      logout();
-                      navigate('/');
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-1.5 rounded-full text-xs text-red-400 hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter"
-                  >
-                    <span>Cerrar sesión</span>
+                )}
+
+                {/* Cerrar sesión */}
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate('/');
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-red-400 hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
                     <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                    <span>Cerrar sesión</span>
+                  </span>
+                  <span>✕</span>
+                </button>
               </div>
             </div>
             {activeUser ? (

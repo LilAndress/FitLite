@@ -12,6 +12,8 @@ export interface Usuario {
   edad?: number | null;
   estatura?: number | null;
   nivelExperiencia?: NivelExperiencia | null;
+  activo: boolean;
+  ultimoAcceso?: string | null;
   fechaRegistro: string;
 }
 

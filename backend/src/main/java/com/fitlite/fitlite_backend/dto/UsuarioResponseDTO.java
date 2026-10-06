@@ -26,4 +26,6 @@ public class UsuarioResponseDTO {
     private Double estatura;
     private NivelExperiencia nivelExperiencia;
     private LocalDateTime fechaRegistro;
+    private Boolean activo;
+    private LocalDateTime ultimoAcceso;
 }

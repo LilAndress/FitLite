@@ -3,6 +3,7 @@ package com.fitlite.fitlite_backend.controller;
 import com.fitlite.fitlite_backend.dto.ActualizarPesoRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioResponseDTO;
+import com.fitlite.fitlite_backend.exception.AccesoDenegadoException;
 import com.fitlite.fitlite_backend.service.UsuarioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,14 +21,25 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
+    private void validarRolAdmin(String userRole) {
+        if (userRole == null || !userRole.trim().equalsIgnoreCase("ADMIN")) {
+            throw new AccesoDenegadoException("Acceso denegado: Se requiere rol de Administrador para gestionar o consultar el directorio de usuarios.");
+        }
+    }
+
     @PostMapping
-    public ResponseEntity<UsuarioResponseDTO> crearUsuario(@Valid @RequestBody UsuarioRequestDTO request) {
+    public ResponseEntity<UsuarioResponseDTO> crearUsuario(
+            @Valid @RequestBody UsuarioRequestDTO request,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        validarRolAdmin(userRole);
         UsuarioResponseDTO response = usuarioService.crearUsuario(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<UsuarioResponseDTO>> obtenerTodos() {
+    public ResponseEntity<List<UsuarioResponseDTO>> obtenerTodos(
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        validarRolAdmin(userRole);
         return ResponseEntity.ok(usuarioService.obtenerTodos());
     }
 
@@ -42,19 +54,34 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioResponseDTO> actualizarUsuario(@PathVariable Long id,
-                                                               @Valid @RequestBody UsuarioRequestDTO request) {
+    public ResponseEntity<UsuarioResponseDTO> actualizarUsuario(
+            @PathVariable Long id,
+            @Valid @RequestBody UsuarioRequestDTO request,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        validarRolAdmin(userRole);
         return ResponseEntity.ok(usuarioService.actualizarUsuario(id, request));
     }
 
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<UsuarioResponseDTO> cambiarEstadoActivo(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        validarRolAdmin(userRole);
+        return ResponseEntity.ok(usuarioService.toggleEstadoActivo(id));
+    }
+
     @PatchMapping("/{id}/peso")
-    public ResponseEntity<UsuarioResponseDTO> actualizarPeso(@PathVariable Long id,
-                                                            @Valid @RequestBody ActualizarPesoRequestDTO request) {
+    public ResponseEntity<UsuarioResponseDTO> actualizarPeso(
+            @PathVariable Long id,
+            @Valid @RequestBody ActualizarPesoRequestDTO request) {
         return ResponseEntity.ok(usuarioService.actualizarPesoActual(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarUsuario(@PathVariable Long id) {
+    public ResponseEntity<Void> eliminarUsuario(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        validarRolAdmin(userRole);
         usuarioService.eliminarUsuario(id);
         return ResponseEntity.noContent().build();
     }
