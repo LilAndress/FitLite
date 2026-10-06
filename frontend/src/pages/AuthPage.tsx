@@ -76,8 +76,8 @@ export const AuthPage: React.FC = () => {
   const loginMutation = useMutation({
     mutationFn: () => authApi.login({ email: loginEmail.trim(), password: loginPassword }),
     onSuccess: async (usuario) => {
-      await refreshUsers();
       setActiveUser(usuario);
+      await refreshUsers();
       navigate('/dashboard');
     },
     onError: (err: any) => {
@@ -105,8 +105,8 @@ export const AuthPage: React.FC = () => {
       });
     },
     onSuccess: async (newUser) => {
-      await refreshUsers();
       setActiveUser(newUser);
+      await refreshUsers();
       navigate('/dashboard');
     },
     onError: (err: any) => {

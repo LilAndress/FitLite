@@ -26,13 +26,13 @@ export const authApi = {
     };
 
     try {
-      // Intentar /api/usuarios (compatible con servidor actual y actualizado)
-      const { data } = await apiClient.post<Usuario>('/usuarios', payload);
+      // Ruta pública de registro principal
+      const { data } = await apiClient.post<Usuario>('/auth/registro', payload);
       return data;
     } catch (err: any) {
-      // Si fallara por ruta alternativa, intentar /api/auth/registro
+      // Si la ruta no existe por ser versión previa del backend (404), intentar /usuarios
       if (err.response?.status === 404) {
-        const { data } = await apiClient.post<Usuario>('/auth/registro', payload);
+        const { data } = await apiClient.post<Usuario>('/usuarios', payload);
         return data;
       }
       throw err;

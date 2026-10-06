@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,7 +18,8 @@ import {
   Power,
   PowerOff,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { usuariosApi } from '../api/usuarios.api';
@@ -38,7 +39,21 @@ const usuarioSchema = z.object({
 type UsuarioFormValues = z.infer<typeof usuarioSchema>;
 
 export const UsuariosPage: React.FC = () => {
-  const { users, activeUser, refreshUsers, isLoadingUsers } = useUser();
+  const { activeUser, refreshUsers } = useUser();
+  const queryClient = useQueryClient();
+
+  const {
+    data: users = [],
+    isLoading: isLoadingUsers,
+    isError: isUsersError,
+    error: usersError,
+    refetch: refetchUsers,
+  } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: () => usuariosApi.getAll(),
+    enabled: activeUser?.rol === 'ADMIN',
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -71,6 +86,8 @@ export const UsuariosPage: React.FC = () => {
   const createUsuarioMutation = useMutation({
     mutationFn: (data: UsuarioFormValues) => usuariosApi.create(data),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      await refetchUsers();
       await refreshUsers();
       setIsModalOpen(false);
       reset();
@@ -90,6 +107,8 @@ export const UsuariosPage: React.FC = () => {
   const toggleEstadoMutation = useMutation({
     mutationFn: (id: number) => usuariosApi.toggleEstado(id),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      await refetchUsers();
       await refreshUsers();
     },
     onError: (err: any) => {
@@ -103,6 +122,8 @@ export const UsuariosPage: React.FC = () => {
       return usuariosApi.actualizarPeso(id, { peso, notas });
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      await refetchUsers();
       await refreshUsers();
       setSelectedUserForWeight(null);
       setPesoInput('');
@@ -118,6 +139,8 @@ export const UsuariosPage: React.FC = () => {
   const deleteUsuarioMutation = useMutation({
     mutationFn: (id: number) => usuariosApi.delete(id),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      await refetchUsers();
       await refreshUsers();
       setUserToDelete(null);
     },
@@ -239,6 +262,23 @@ export const UsuariosPage: React.FC = () => {
           </span>
         </div>
       </div>
+
+      {/* Error state */}
+      {isUsersError && (
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-inter flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{(usersError as any)?.response?.data?.message || (usersError as any)?.message || 'Error al cargar los usuarios'}</span>
+          </div>
+          <button
+            onClick={() => refetchUsers()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold transition-all cursor-pointer"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {/* Users Grid */}
       {isLoadingUsers ? (

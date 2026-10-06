@@ -12,10 +12,18 @@ apiClient.interceptors.request.use((config) => {
     if (saved) {
       const user = JSON.parse(saved);
       if (user.id) {
-        config.headers['X-User-Id'] = String(user.id);
+        const idStr = String(user.id);
+        if (typeof config.headers.set === 'function') {
+          config.headers.set('X-User-Id', idStr);
+        }
+        config.headers['X-User-Id'] = idStr;
       }
       if (user.rol) {
-        config.headers['X-User-Role'] = user.rol;
+        const rolStr = String(user.rol);
+        if (typeof config.headers.set === 'function') {
+          config.headers.set('X-User-Role', rolStr);
+        }
+        config.headers['X-User-Role'] = rolStr;
       }
     }
   } catch (err) {

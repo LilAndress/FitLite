@@ -25,28 +25,22 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<Usuario[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
 
-  const setActiveUser = useCallback((user: Usuario | null) => {
-    setActiveUserState(user);
-    if (user) {
-      localStorage.setItem('fitlite_active_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('fitlite_active_user');
-    }
-  }, []);
-
-  const logout = useCallback(() => {
-    setActiveUser(null);
-  }, [setActiveUser]);
-
-  const refreshUsers = useCallback(async () => {
+  const refreshUsers = useCallback(async (userOverride?: Usuario | null) => {
     try {
       setIsLoadingUsers(true);
-      const saved = localStorage.getItem('fitlite_active_user');
-      const currentUser: Usuario | null = saved ? JSON.parse(saved) : null;
+      const currentUser: Usuario | null = userOverride !== undefined
+        ? userOverride
+        : (() => {
+            try {
+              const saved = localStorage.getItem('fitlite_active_user');
+              return saved ? JSON.parse(saved) : null;
+            } catch {
+              return null;
+            }
+          })();
 
       if (!currentUser) {
         setUsers([]);
-        setActiveUserState(null);
         return;
       }
 
@@ -72,6 +66,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoadingUsers(false);
     }
   }, []);
+
+  const setActiveUser = useCallback((user: Usuario | null) => {
+    setActiveUserState(user);
+    if (user) {
+      localStorage.setItem('fitlite_active_user', JSON.stringify(user));
+      refreshUsers(user);
+    } else {
+      localStorage.removeItem('fitlite_active_user');
+      setUsers([]);
+    }
+  }, [refreshUsers]);
+
+  const logout = useCallback(() => {
+    setActiveUser(null);
+  }, [setActiveUser]);
 
   useEffect(() => {
     refreshUsers();

@@ -31,7 +31,10 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponseDTO> crearUsuario(
             @Valid @RequestBody UsuarioRequestDTO request,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
-        validarRolAdmin(userRole);
+        // Si se intenta asignar un rol con privilegios (ADMIN o ENTRENADOR), exigir rol de Administrador
+        if (request.getRol() != null && request.getRol() != com.fitlite.fitlite_backend.enums.RolUsuario.USUARIO) {
+            validarRolAdmin(userRole);
+        }
         UsuarioResponseDTO response = usuarioService.crearUsuario(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
