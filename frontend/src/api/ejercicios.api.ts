@@ -24,6 +24,11 @@ export const ejerciciosApi = {
     return data;
   },
 
+  crearCatalogo: async (ejercicio: Partial<EjercicioCatalogo>): Promise<EjercicioCatalogo> => {
+    const { data } = await apiClient.post<EjercicioCatalogo>('/ejercicios/catalogo', ejercicio);
+    return data;
+  },
+
   create: async (ejercicio: EjercicioRequest): Promise<Ejercicio> => {
     const { data } = await apiClient.post<Ejercicio>('/ejercicios', ejercicio);
     return data;

@@ -100,9 +100,14 @@ public class DataMigrationLoader implements CommandLineRunner {
         }
     }
 
+    private String normalizarNombre(String nombre) {
+        if (nombre == null) return "";
+        return nombre.trim().replaceAll("\\s+", " ");
+    }
+
     private void migrarDatosHistoricosSiExisten() {
         try {
-            // 1. Si la tabla anterior 'ejercicios' existe, migrar nombres faltantes al catálogo
+            // 1. Si la tabla anterior 'ejercicios' existe, migrar deduplicando nombres al catálogo
             List<Map<String, Object>> tablas = jdbcTemplate.queryForList(
                     "SELECT table_name FROM information_schema.tables WHERE table_name IN ('ejercicios', 'rutina_ejercicios')"
             );
@@ -112,51 +117,72 @@ public class DataMigrationLoader implements CommandLineRunner {
 
             if (tieneEjerciciosViejos) {
                 List<Map<String, Object>> filasViejas = jdbcTemplate.queryForList("SELECT * FROM ejercicios");
-                for (Map<String, Object> fila : filasViejas) {
-                    String nombre = String.valueOf(fila.get("nombre")).trim();
-                    Long viejoId = ((Number) fila.get("id")).longValue();
-                    Long rutinaId = ((Number) fila.get("rutina_id")).longValue();
-                    int series = ((Number) fila.get("series_objetivo")).intValue();
-                    int reps = ((Number) fila.get("repeticiones_objetivo")).intValue();
-                    Double peso = fila.get("peso_objetivo") != null ? ((Number) fila.get("peso_objetivo")).doubleValue() : null;
+                log.info("Encontrados {} registros antiguos en tabla 'ejercicios'. Iniciando agrupación y deduplicación...", filasViejas.size());
 
-                    // Asegurar en catálogo
-                    EjercicioCatalogo catalogo = ejercicioCatalogoRepository.findByNombreIgnoreCase(nombre)
+                // Agrupar filas antiguas por nombre normalizado (trim + espacios simples + minúsculas)
+                java.util.Map<String, List<Map<String, Object>>> agrupadosPorNombre = filasViejas.stream()
+                        .filter(f -> f.get("nombre") != null && !String.valueOf(f.get("nombre")).trim().isEmpty())
+                        .collect(java.util.stream.Collectors.groupingBy(f -> normalizarNombre(String.valueOf(f.get("nombre"))).toLowerCase()));
+
+                log.info("Agrupados en {} nombres únicos para el catálogo global.", agrupadosPorNombre.size());
+
+                for (java.util.Map.Entry<String, List<Map<String, Object>>> entry : agrupadosPorNombre.entrySet()) {
+                    List<Map<String, Object>> filasDelGrupo = entry.getValue();
+                    String nombreCanonica = normalizarNombre(String.valueOf(filasDelGrupo.get(0).get("nombre")));
+
+                    // Asegurar EXACTAMENTE UNA entrada en el catálogo para todas las instancias de este nombre
+                    EjercicioCatalogo catalogo = ejercicioCatalogoRepository.findByNombreIgnoreCase(nombreCanonica)
                             .orElseGet(() -> {
                                 EjercicioCatalogo c = EjercicioCatalogo.builder()
-                                        .nombre(nombre)
+                                        .nombre(nombreCanonica)
                                         .grupoMuscular(GrupoMuscular.PECHO)
                                         .descripcionTecnica("Migrado desde versión anterior")
                                         .creadoPorUsuario(null)
                                         .fechaCreacion(LocalDateTime.now())
                                         .build();
-                                return ejercicioCatalogoRepository.save(c);
+                                EjercicioCatalogo guardado = ejercicioCatalogoRepository.save(c);
+                                log.info("Creado nuevo ejercicio en catálogo desde migración: '{}' (ID: {})", guardado.getNombre(), guardado.getId());
+                                return guardado;
                             });
 
-                    // Si existe rutina_ejercicios, migrar relación si no existe
-                    if (tieneRutinaEjercicios) {
-                        Integer count = jdbcTemplate.queryForObject(
-                                "SELECT count(*) FROM rutina_ejercicios WHERE rutina_id = ? AND ejercicio_catalogo_id = ?",
-                                Integer.class,
-                                rutinaId,
-                                catalogo.getId()
-                        );
-                        if (count == null || count == 0) {
-                            jdbcTemplate.update(
-                                    "INSERT INTO rutina_ejercicios (rutina_id, ejercicio_catalogo_id, series_objetivo, repeticiones_objetivo, peso_objetivo) VALUES (?, ?, ?, ?, ?)",
-                                    rutinaId, catalogo.getId(), series, reps, peso
-                            );
-                        }
-                    }
+                    // Para cada registro viejo (incluso si 'Press banca' existía en varias rutinas con IDs viejos distintos):
+                    for (Map<String, Object> fila : filasDelGrupo) {
+                        Long viejoId = ((Number) fila.get("id")).longValue();
+                        Long rutinaId = ((Number) fila.get("rutina_id")).longValue();
+                        int series = ((Number) fila.get("series_objetivo")).intValue();
+                        int reps = ((Number) fila.get("repeticiones_objetivo")).intValue();
+                        Double peso = fila.get("peso_objetivo") != null ? ((Number) fila.get("peso_objetivo")).doubleValue() : null;
 
-                    // Actualizar progresos que tenían el viejo ejercicio_id
-                    try {
-                        jdbcTemplate.update(
-                                "UPDATE progresos SET ejercicio_catalogo_id = ? WHERE ejercicio_id = ? AND (ejercicio_catalogo_id IS NULL OR ejercicio_catalogo_id = 0)",
-                                catalogo.getId(), viejoId
-                        );
-                    } catch (Exception e) {
-                        log.debug("No se pudo actualizar progresos por ejercicio_id (quizás la columna ya no existe): {}", e.getMessage());
+                        // Si existe rutina_ejercicios, vincular a la fila única del catálogo
+                        if (tieneRutinaEjercicios) {
+                            Integer count = jdbcTemplate.queryForObject(
+                                    "SELECT count(*) FROM rutina_ejercicios WHERE rutina_id = ? AND ejercicio_catalogo_id = ?",
+                                    Integer.class,
+                                    rutinaId,
+                                    catalogo.getId()
+                            );
+                            if (count == null || count == 0) {
+                                jdbcTemplate.update(
+                                        "INSERT INTO rutina_ejercicios (rutina_id, ejercicio_catalogo_id, series_objetivo, repeticiones_objetivo, peso_objetivo) VALUES (?, ?, ?, ?, ?)",
+                                        rutinaId, catalogo.getId(), series, reps, peso
+                                );
+                            }
+                        }
+
+                        // REMAPEO EXPLÍCITO DE FOREIGN KEYS EN PROGRESO:
+                        // Cada progreso que apuntaba al viejo ejercicio_id ahora apunta al ID unificado del catálogo
+                        try {
+                            int updated = jdbcTemplate.update(
+                                    "UPDATE progresos SET ejercicio_catalogo_id = ? WHERE ejercicio_id = ? AND (ejercicio_catalogo_id IS NULL OR ejercicio_catalogo_id = 0)",
+                                    catalogo.getId(), viejoId
+                            );
+                            if (updated > 0) {
+                                log.info("Remapeados {} progresos con viejo ejercicio_id={} hacia catalogo_id={} ('{}')",
+                                        updated, viejoId, catalogo.getId(), catalogo.getNombre());
+                            }
+                        } catch (Exception e) {
+                            log.debug("No se pudo remapear progresos por ejercicio_id: {}", e.getMessage());
+                        }
                     }
                 }
             }

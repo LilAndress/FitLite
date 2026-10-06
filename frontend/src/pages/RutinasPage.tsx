@@ -19,6 +19,7 @@ import { ejerciciosApi } from '../api/ejercicios.api';
 import type { Rutina } from '../types';
 import { Modal } from '../components/Modal';
 import { Badge } from '../components/Badge';
+import { EjercicioCombobox } from '../components/EjercicioCombobox';
 
 // Zod schemas
 const rutinaSchema = z.object({
@@ -29,6 +30,7 @@ const rutinaSchema = z.object({
 type RutinaFormValues = z.infer<typeof rutinaSchema>;
 
 const ejercicioSchema = z.object({
+  ejercicioCatalogoId: z.number().optional(),
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   seriesObjetivo: z.coerce.number().min(1, 'Mínimo 1 serie'),
   repeticionesObjetivo: z.coerce.number().min(1, 'Mínimo 1 repetición'),
@@ -52,11 +54,6 @@ export const RutinasPage: React.FC = () => {
     enabled: Boolean(activeUser),
   });
 
-  const { data: catalogoEjercicios = [] } = useQuery({
-    queryKey: ['catalogoEjercicios'],
-    queryFn: () => ejerciciosApi.getCatalogo(),
-  });
-
   // Routine Form
   const {
     register: registerRutina,
@@ -72,10 +69,13 @@ export const RutinasPage: React.FC = () => {
     register: registerEjercicio,
     handleSubmit: handleEjercicioSubmit,
     reset: resetEjercicioForm,
+    setValue: setEjercicioValue,
+    watch: watchEjercicio,
     formState: { errors: ejercicioErrors },
   } = useForm<EjercicioFormValues>({
     resolver: zodResolver(ejercicioSchema),
     defaultValues: {
+      nombre: '',
       seriesObjetivo: 4,
       repeticionesObjetivo: 10,
       pesoObjetivo: 0,
@@ -119,15 +119,17 @@ export const RutinasPage: React.FC = () => {
     mutationFn: (data: EjercicioFormValues) => {
       if (!selectedRutinaForEjercicio) throw new Error('No routine selected');
       return ejerciciosApi.create({
-        nombre: data.nombre,
-        seriesObjetivo: data.seriesObjetivo,
-        repeticionesObjetivo: data.repeticionesObjetivo,
-        pesoObjetivo: data.pesoObjetivo || 0,
+        ejercicioCatalogoId: data.ejercicioCatalogoId,
+        nombre: data.nombre.trim(),
+        seriesObjetivo: Number(data.seriesObjetivo),
+        repeticionesObjetivo: Number(data.repeticionesObjetivo),
+        pesoObjetivo: data.pesoObjetivo !== undefined ? Number(data.pesoObjetivo) : 0,
         rutinaId: selectedRutinaForEjercicio.id,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ejercicios', selectedRutinaForEjercicio?.id] });
+      queryClient.invalidateQueries({ queryKey: ['ejerciciosDisponibles'] });
       setSelectedRutinaForEjercicio(null);
       resetEjercicioForm();
     },
@@ -274,34 +276,15 @@ export const RutinasPage: React.FC = () => {
         title={`Añadir ejercicio a ${selectedRutinaForEjercicio?.nombre || ''}`}
       >
         <form onSubmit={handleEjercicioSubmit((data) => createEjercicioMutation.mutate(data))} className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter">
-                Nombre del ejercicio *
-              </label>
-              {catalogoEjercicios.length > 0 && (
-                <span className="text-[10px] text-[var(--accent-primary)] font-inter font-medium">
-                  {catalogoEjercicios.length} ejercicios en catálogo
-                </span>
-              )}
-            </div>
-            <input
-              {...registerEjercicio('nombre')}
-              list="catalogo-ejercicios-sugerencias"
-              placeholder="Ej. Press Militar con Barra (o elige del catálogo)"
-              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
-            />
-            <datalist id="catalogo-ejercicios-sugerencias">
-              {catalogoEjercicios.map((cat) => (
-                <option key={cat.id} value={cat.nombre}>
-                  {cat.grupoMuscular} {cat.descripcionTecnica ? `· ${cat.descripcionTecnica}` : ''}
-                </option>
-              ))}
-            </datalist>
-            {ejercicioErrors.nombre && (
-              <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{ejercicioErrors.nombre.message}</p>
-            )}
-          </div>
+          <EjercicioCombobox
+            value={watchEjercicio('nombre') || ''}
+            selectedCatalogoId={watchEjercicio('ejercicioCatalogoId')}
+            onChange={(nombre, catalogoId) => {
+              setEjercicioValue('nombre', nombre, { shouldValidate: true });
+              setEjercicioValue('ejercicioCatalogoId', catalogoId);
+            }}
+            error={ejercicioErrors.nombre?.message}
+          />
 
           <div className="grid grid-cols-3 gap-3">
             <div>

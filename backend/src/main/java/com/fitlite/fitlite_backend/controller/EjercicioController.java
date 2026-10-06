@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/ejercicios")
+@RequestMapping({"/api/ejercicios", "/ejercicios"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class EjercicioController {
@@ -28,6 +28,16 @@ public class EjercicioController {
     @GetMapping("/catalogo")
     public List<EjercicioCatalogo> obtenerCatalogoCompleto() {
         return ejercicioService.buscarCatalogo("");
+    }
+
+    @PostMapping("/catalogo")
+    public ResponseEntity<EjercicioCatalogo> crearEnCatalogo(@RequestBody EjercicioCatalogo nuevo,
+                                                             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        if (userId != null && nuevo.getCreadoPorUsuario() == null) {
+            nuevo.setCreadoPorUsuario(userId);
+        }
+        EjercicioCatalogo guardado = ejercicioService.crearEnCatalogo(nuevo);
+        return ResponseEntity.status(HttpStatus.CREATED).body(guardado);
     }
 
     @PostMapping

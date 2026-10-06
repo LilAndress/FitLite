@@ -108,7 +108,7 @@ public class EjercicioService {
             throw new IllegalArgumentException("Debe proporcionar un ID de catálogo o un nombre de ejercicio");
         }
 
-        String nombreNormalizado = request.getNombre().trim();
+        String nombreNormalizado = request.getNombre().trim().replaceAll("\\s+", " ");
         return ejercicioCatalogoRepository.findByNombreIgnoreCase(nombreNormalizado)
                 .orElseGet(() -> {
                     EjercicioCatalogo nuevo = EjercicioCatalogo.builder()
@@ -118,6 +118,22 @@ public class EjercicioService {
                             .creadoPorUsuario(usuarioId)
                             .fechaCreacion(LocalDateTime.now())
                             .build();
+                    return ejercicioCatalogoRepository.save(nuevo);
+                });
+    }
+
+    @Transactional
+    public EjercicioCatalogo crearEnCatalogo(EjercicioCatalogo nuevo) {
+        String nombre = nuevo.getNombre() != null ? nuevo.getNombre().trim().replaceAll("\\s+", " ") : "";
+        if (nombre.isEmpty()) {
+            throw new IllegalArgumentException("El nombre del ejercicio no puede estar vacío");
+        }
+        return ejercicioCatalogoRepository.findByNombreIgnoreCase(nombre)
+                .orElseGet(() -> {
+                    nuevo.setNombre(nombre);
+                    if (nuevo.getFechaCreacion() == null) {
+                        nuevo.setFechaCreacion(LocalDateTime.now());
+                    }
                     return ejercicioCatalogoRepository.save(nuevo);
                 });
     }
