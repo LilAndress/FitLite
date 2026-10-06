@@ -1,5 +1,6 @@
 package com.fitlite.fitlite_backend.dto;
 
+import com.fitlite.fitlite_backend.enums.NivelExperiencia;
 import com.fitlite.fitlite_backend.enums.ObjetivoFisico;
 import com.fitlite.fitlite_backend.enums.RolUsuario;
 import lombok.AllArgsConstructor;
@@ -21,5 +22,8 @@ public class UsuarioResponseDTO {
     private ObjetivoFisico objetivo;
     private RolUsuario rol;
     private Double pesoActual;
+    private Integer edad;
+    private Double estatura;
+    private NivelExperiencia nivelExperiencia;
     private LocalDateTime fechaRegistro;
 }

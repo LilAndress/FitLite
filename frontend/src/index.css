@@ -18,6 +18,38 @@
   --font-body: 'Inter', sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes slowZoom {
+  0%, 100% {
+    transform: scale(1.04);
+  }
+  50% {
+    transform: scale(1.09);
+  }
+}
+
+.animate-slow-zoom {
+  animation: slowZoom 24s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.08);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 6s ease-in-out infinite;
+}
+
 @layer base {
   body {
     background-color: var(--bg-primary);
@@ -40,7 +72,7 @@
 
   /* Mapeo seguro para cualquier clase previa */
   .font-orbitron {
-    font-family: var(--font-heading);
+    font-family: 'Orbitron', var(--font-heading);
   }
 
   .font-inter {

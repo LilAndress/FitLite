@@ -1,13 +1,14 @@
 import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, UserCircle2 } from 'lucide-react';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, UserCircle2, LogOut } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 export const Navbar: React.FC = () => {
-  const { activeUser, users, setActiveUser } = useUser();
+  const { activeUser, users, setActiveUser, logout } = useUser();
+  const navigate = useNavigate();
 
   const navItems = [
-    { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Rutinas', path: '/rutinas', icon: Calendar },
     { label: 'Progreso', path: '/progreso', icon: LineChart },
     { label: 'Usuarios', path: '/usuarios', icon: Users },
@@ -18,7 +19,7 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo: Clean modern fitness aesthetic */}
-          <Link to="/" className="flex items-center gap-2.5 group">
+          <Link to="/dashboard" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-full bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 flex items-center justify-center group-hover:scale-105 transition-transform duration-150">
               <Dumbbell className="w-4 h-4" strokeWidth={2} />
             </div>
@@ -105,7 +106,7 @@ export const Navbar: React.FC = () => {
                     </button>
                   ))
                 )}
-                <div className="border-t border-[var(--border)] mt-1.5 pt-1.5 px-2">
+                <div className="border-t border-[var(--border)] mt-1.5 pt-1.5 px-2 space-y-1">
                   <Link
                     to="/usuarios"
                     className="flex items-center justify-between px-3 py-1.5 rounded-full text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter"
@@ -113,9 +114,39 @@ export const Navbar: React.FC = () => {
                     <span>Gestionar usuarios</span>
                     <span>→</span>
                   </Link>
+                  <button
+                    onClick={() => {
+                      logout();
+                      navigate('/');
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-1.5 rounded-full text-xs text-red-400 hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter"
+                  >
+                    <span>Cerrar sesión</span>
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
+            {activeUser ? (
+              <button
+                onClick={() => {
+                  logout();
+                  navigate('/');
+                }}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] hover:border-red-500/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-red-400 transition-all font-inter active:scale-95"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Salir</span>
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold hover:brightness-105 active:scale-95 transition-all font-inter"
+              >
+                Acceso
+              </Link>
+            )}
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import { usuariosApi } from '../api/usuarios.api';
 interface UserContextType {
   activeUser: Usuario | null;
   setActiveUser: (user: Usuario | null) => void;
+  logout: () => void;
   users: Usuario[];
   isLoadingUsers: boolean;
   refreshUsers: () => Promise<void>;
@@ -33,6 +34,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const logout = useCallback(() => {
+    setActiveUser(null);
+  }, [setActiveUser]);
+
   const refreshUsers = useCallback(async () => {
     try {
       setIsLoadingUsers(true);
@@ -41,16 +46,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.length > 0) {
         setActiveUserState((current) => {
           if (!current) {
-            localStorage.setItem('fitlite_active_user', JSON.stringify(data[0]));
-            return data[0];
+            return null;
           }
           const updatedCurrent = data.find((u) => u.id === current.id);
           if (updatedCurrent) {
             localStorage.setItem('fitlite_active_user', JSON.stringify(updatedCurrent));
             return updatedCurrent;
           }
-          localStorage.setItem('fitlite_active_user', JSON.stringify(data[0]));
-          return data[0];
+          localStorage.removeItem('fitlite_active_user');
+          return null;
         });
       } else {
         setActiveUserState(null);
@@ -72,6 +76,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         activeUser,
         setActiveUser,
+        logout,
         users,
         isLoadingUsers,
         refreshUsers,

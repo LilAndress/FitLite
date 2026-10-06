@@ -40,6 +40,16 @@ public class Usuario {
     @Column(name = "peso_actual")
     private Double pesoActual;
 
+    @Column(name = "edad")
+    private Integer edad;
+
+    @Column(name = "estatura")
+    private Double estatura;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "nivel_experiencia")
+    private com.fitlite.fitlite_backend.enums.NivelExperiencia nivelExperiencia;
+
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro = LocalDateTime.now();
 

@@ -1,10 +1,12 @@
 package com.fitlite.fitlite_backend.service;
 
 import com.fitlite.fitlite_backend.dto.ActualizarPesoRequestDTO;
+import com.fitlite.fitlite_backend.dto.LoginRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioResponseDTO;
 import com.fitlite.fitlite_backend.entity.PesoCorporal;
 import com.fitlite.fitlite_backend.entity.Usuario;
+import com.fitlite.fitlite_backend.enums.RolUsuario;
 import com.fitlite.fitlite_backend.exception.ResourceNotFoundException;
 import com.fitlite.fitlite_backend.repository.PesoCorporalRepository;
 import com.fitlite.fitlite_backend.repository.UsuarioRepository;
@@ -34,8 +36,12 @@ public class UsuarioService {
         usuario.setEmail(request.getEmail());
         usuario.setPassword(request.getPassword());
         usuario.setObjetivo(request.getObjetivo());
-        usuario.setRol(request.getRol());
+        // Rol por defecto USUARIO para registros
+        usuario.setRol(request.getRol() != null ? request.getRol() : RolUsuario.USUARIO);
         usuario.setPesoActual(request.getPesoActual());
+        usuario.setEdad(request.getEdad());
+        usuario.setEstatura(request.getEstatura());
+        usuario.setNivelExperiencia(request.getNivelExperiencia());
         usuario.setFechaRegistro(LocalDateTime.now());
 
         Usuario guardado = usuarioRepository.save(usuario);
@@ -51,6 +57,18 @@ public class UsuarioService {
         }
 
         return mapToResponse(guardado);
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponseDTO login(LoginRequestDTO request) {
+        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("No existe ninguna cuenta asociada a este correo electrónico"));
+
+        if (!usuario.getPassword().equals(request.getPassword())) {
+            throw new IllegalArgumentException("Contraseña incorrecta");
+        }
+
+        return mapToResponse(usuario);
     }
 
     @Transactional(readOnly = true)
@@ -89,7 +107,18 @@ public class UsuarioService {
             usuario.setPassword(request.getPassword());
         }
         usuario.setObjetivo(request.getObjetivo());
-        usuario.setRol(request.getRol());
+        if (request.getRol() != null) {
+            usuario.setRol(request.getRol());
+        }
+        if (request.getEdad() != null) {
+            usuario.setEdad(request.getEdad());
+        }
+        if (request.getEstatura() != null) {
+            usuario.setEstatura(request.getEstatura());
+        }
+        if (request.getNivelExperiencia() != null) {
+            usuario.setNivelExperiencia(request.getNivelExperiencia());
+        }
 
         if (request.getPesoActual() != null && !request.getPesoActual().equals(usuario.getPesoActual())) {
             usuario.setPesoActual(request.getPesoActual());
@@ -142,6 +171,9 @@ public class UsuarioService {
                 .objetivo(usuario.getObjetivo())
                 .rol(usuario.getRol())
                 .pesoActual(usuario.getPesoActual())
+                .edad(usuario.getEdad())
+                .estatura(usuario.getEstatura())
+                .nivelExperiencia(usuario.getNivelExperiencia())
                 .fechaRegistro(usuario.getFechaRegistro())
                 .build();
     }

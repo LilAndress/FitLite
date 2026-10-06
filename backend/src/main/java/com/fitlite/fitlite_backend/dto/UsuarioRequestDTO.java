@@ -1,5 +1,6 @@
 package com.fitlite.fitlite_backend.dto;
 
+import com.fitlite.fitlite_backend.enums.NivelExperiencia;
 import com.fitlite.fitlite_backend.enums.ObjetivoFisico;
 import com.fitlite.fitlite_backend.enums.RolUsuario;
 import jakarta.validation.constraints.Email;
@@ -30,9 +31,16 @@ public class UsuarioRequestDTO {
     @NotNull(message = "El objetivo físico es obligatorio")
     private ObjetivoFisico objetivo;
 
-    @NotNull(message = "El rol es obligatorio")
     private RolUsuario rol;
 
     @Positive(message = "El peso actual debe ser mayor a 0")
     private Double pesoActual;
+
+    @Positive(message = "La edad debe ser mayor a 0")
+    private Integer edad;
+
+    @Positive(message = "La estatura debe ser mayor a 0")
+    private Double estatura;
+
+    private NivelExperiencia nivelExperiencia;
 }

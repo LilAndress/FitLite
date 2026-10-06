@@ -1,5 +1,6 @@
 export type ObjetivoFisico = 'PERDER_PESO' | 'GANAR_MASA' | 'MANTENER' | 'RESISTENCIA';
 export type RolUsuario = 'USUARIO' | 'ENTRENADOR' | 'ADMIN';
+export type NivelExperiencia = 'PRINCIPIANTE' | 'INTERMEDIO' | 'AVANZADO';
 
 export interface Usuario {
   id: number;
@@ -8,6 +9,9 @@ export interface Usuario {
   objetivo: ObjetivoFisico;
   rol: RolUsuario;
   pesoActual?: number | null;
+  edad?: number | null;
+  estatura?: number | null;
+  nivelExperiencia?: NivelExperiencia | null;
   fechaRegistro: string;
 }
 
@@ -16,8 +20,27 @@ export interface UsuarioRequest {
   email: string;
   password?: string;
   objetivo: ObjetivoFisico;
-  rol: RolUsuario;
+  rol?: RolUsuario;
   pesoActual?: number | null;
+  edad?: number | null;
+  estatura?: number | null;
+  nivelExperiencia?: NivelExperiencia | null;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegistroRequest {
+  nombre: string;
+  email: string;
+  password: string;
+  edad: number;
+  estatura: number;
+  pesoActual: number;
+  nivelExperiencia: NivelExperiencia;
+  objetivo: ObjetivoFisico;
 }
 
 export interface ActualizarPesoRequest {
