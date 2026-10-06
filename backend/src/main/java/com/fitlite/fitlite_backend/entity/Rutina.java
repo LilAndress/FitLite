@@ -34,6 +34,6 @@ public class Rutina {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @OneToMany(mappedBy = "rutina", cascade = CascadeType.ALL)
-    private List<Ejercicio> ejercicios = new ArrayList<>();
+    @OneToMany(mappedBy = "rutina", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RutinaEjercicio> ejercicios = new ArrayList<>();
 }

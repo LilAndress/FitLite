@@ -1,5 +1,6 @@
 package com.fitlite.fitlite_backend.dto;
 
+import com.fitlite.fitlite_backend.enums.GrupoMuscular;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,8 @@ public class ProgresoResponseDTO {
     private Double pesoRealizado;
     private Long usuarioId;
     private String usuarioNombre;
-    private Long ejercicioId;
+    private Long ejercicioCatalogoId;
+    private Long ejercicioId; // Alias para compatibilidad hacia atrás
     private String ejercicioNombre;
+    private GrupoMuscular grupoMuscular;
 }

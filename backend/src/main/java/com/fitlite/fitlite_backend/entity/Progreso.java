@@ -2,6 +2,7 @@ package com.fitlite.fitlite_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Progreso {
 
     @Id
@@ -35,6 +37,6 @@ public class Progreso {
     private Usuario usuario;
 
     @ManyToOne
-    @JoinColumn(name = "ejercicio_id", nullable = false)
-    private Ejercicio ejercicio;
+    @JoinColumn(name = "ejercicio_catalogo_id")
+    private EjercicioCatalogo ejercicioCatalogo;
 }

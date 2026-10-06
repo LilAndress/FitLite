@@ -2,12 +2,14 @@ package com.fitlite.fitlite_backend.service;
 
 import com.fitlite.fitlite_backend.dto.ProgresoRequestDTO;
 import com.fitlite.fitlite_backend.dto.ProgresoResponseDTO;
-import com.fitlite.fitlite_backend.entity.Ejercicio;
+import com.fitlite.fitlite_backend.entity.EjercicioCatalogo;
 import com.fitlite.fitlite_backend.entity.Progreso;
+import com.fitlite.fitlite_backend.entity.RutinaEjercicio;
 import com.fitlite.fitlite_backend.entity.Usuario;
 import com.fitlite.fitlite_backend.exception.ResourceNotFoundException;
-import com.fitlite.fitlite_backend.repository.EjercicioRepository;
+import com.fitlite.fitlite_backend.repository.EjercicioCatalogoRepository;
 import com.fitlite.fitlite_backend.repository.ProgresoRepository;
+import com.fitlite.fitlite_backend.repository.RutinaEjercicioRepository;
 import com.fitlite.fitlite_backend.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,23 +23,37 @@ public class ProgresoService {
 
     private final ProgresoRepository progresoRepository;
     private final UsuarioRepository usuarioRepository;
-    private final EjercicioRepository ejercicioRepository;
+    private final EjercicioCatalogoRepository ejercicioCatalogoRepository;
+    private final RutinaEjercicioRepository rutinaEjercicioRepository;
 
     @Transactional
     public ProgresoResponseDTO registrarProgreso(ProgresoRequestDTO request) {
         Usuario usuario = usuarioRepository.findById(request.getUsuarioId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + request.getUsuarioId()));
 
-        Ejercicio ejercicio = ejercicioRepository.findById(request.getEjercicioId())
-                .orElseThrow(() -> new ResourceNotFoundException("Ejercicio no encontrado con ID: " + request.getEjercicioId()));
+        EjercicioCatalogo catalogo = null;
+        if (request.getEjercicioCatalogoId() != null) {
+            catalogo = ejercicioCatalogoRepository.findById(request.getEjercicioCatalogoId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Ejercicio del catálogo no encontrado con ID: " + request.getEjercicioCatalogoId()));
+        } else if (request.getEjercicioId() != null) {
+            catalogo = ejercicioCatalogoRepository.findById(request.getEjercicioId()).orElse(null);
+            if (catalogo == null) {
+                catalogo = rutinaEjercicioRepository.findById(request.getEjercicioId())
+                        .map(RutinaEjercicio::getEjercicioCatalogo)
+                        .orElseThrow(() -> new ResourceNotFoundException("Ejercicio no encontrado con ID: " + request.getEjercicioId()));
+            }
+        } else {
+            throw new IllegalArgumentException("Debe proporcionar un ID de ejercicio válido");
+        }
 
-        Progreso progreso = new Progreso();
-        progreso.setFecha(request.getFecha());
-        progreso.setSeriesRealizadas(request.getSeriesRealizadas());
-        progreso.setRepeticionesRealizadas(request.getRepeticionesRealizadas());
-        progreso.setPesoRealizado(request.getPesoRealizado());
-        progreso.setUsuario(usuario);
-        progreso.setEjercicio(ejercicio);
+        Progreso progreso = Progreso.builder()
+                .fecha(request.getFecha())
+                .seriesRealizadas(request.getSeriesRealizadas())
+                .repeticionesRealizadas(request.getRepeticionesRealizadas())
+                .pesoRealizado(request.getPesoRealizado())
+                .usuario(usuario)
+                .ejercicioCatalogo(catalogo)
+                .build();
 
         Progreso guardado = progresoRepository.save(progreso);
         return mapToResponse(guardado);
@@ -65,10 +81,15 @@ public class ProgresoService {
         if (!usuarioRepository.existsById(usuarioId)) {
             throw new ResourceNotFoundException("Usuario no encontrado con ID: " + usuarioId);
         }
-        if (!ejercicioRepository.existsById(ejercicioId)) {
-            throw new ResourceNotFoundException("Ejercicio no encontrado con ID: " + ejercicioId);
+
+        Long catalogoId = ejercicioId;
+        if (!ejercicioCatalogoRepository.existsById(ejercicioId)) {
+            catalogoId = rutinaEjercicioRepository.findById(ejercicioId)
+                    .map(re -> re.getEjercicioCatalogo().getId())
+                    .orElse(ejercicioId);
         }
-        return progresoRepository.findByUsuarioIdAndEjercicioIdOrderByFechaDesc(usuarioId, ejercicioId)
+
+        return progresoRepository.findByUsuarioIdAndEjercicioCatalogoIdOrderByFechaDesc(usuarioId, catalogoId)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -94,8 +115,10 @@ public class ProgresoService {
                 .pesoRealizado(progreso.getPesoRealizado())
                 .usuarioId(progreso.getUsuario().getId())
                 .usuarioNombre(progreso.getUsuario().getNombre())
-                .ejercicioId(progreso.getEjercicio().getId())
-                .ejercicioNombre(progreso.getEjercicio().getNombre())
+                .ejercicioCatalogoId(progreso.getEjercicioCatalogo() != null ? progreso.getEjercicioCatalogo().getId() : null)
+                .ejercicioId(progreso.getEjercicioCatalogo() != null ? progreso.getEjercicioCatalogo().getId() : null)
+                .ejercicioNombre(progreso.getEjercicioCatalogo() != null ? progreso.getEjercicioCatalogo().getNombre() : "Ejercicio eliminado")
+                .grupoMuscular(progreso.getEjercicioCatalogo() != null ? progreso.getEjercicioCatalogo().getGrupoMuscular() : null)
                 .build();
     }
 }

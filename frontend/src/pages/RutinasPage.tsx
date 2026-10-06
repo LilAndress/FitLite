@@ -52,6 +52,11 @@ export const RutinasPage: React.FC = () => {
     enabled: Boolean(activeUser),
   });
 
+  const { data: catalogoEjercicios = [] } = useQuery({
+    queryKey: ['catalogoEjercicios'],
+    queryFn: () => ejerciciosApi.getCatalogo(),
+  });
+
   // Routine Form
   const {
     register: registerRutina,
@@ -270,14 +275,29 @@ export const RutinasPage: React.FC = () => {
       >
         <form onSubmit={handleEjercicioSubmit((data) => createEjercicioMutation.mutate(data))} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
-              Nombre del ejercicio *
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter">
+                Nombre del ejercicio *
+              </label>
+              {catalogoEjercicios.length > 0 && (
+                <span className="text-[10px] text-[var(--accent-primary)] font-inter font-medium">
+                  {catalogoEjercicios.length} ejercicios en catálogo
+                </span>
+              )}
+            </div>
             <input
               {...registerEjercicio('nombre')}
-              placeholder="Ej. Press Militar con Barra"
+              list="catalogo-ejercicios-sugerencias"
+              placeholder="Ej. Press Militar con Barra (o elige del catálogo)"
               className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />
+            <datalist id="catalogo-ejercicios-sugerencias">
+              {catalogoEjercicios.map((cat) => (
+                <option key={cat.id} value={cat.nombre}>
+                  {cat.grupoMuscular} {cat.descripcionTecnica ? `· ${cat.descripcionTecnica}` : ''}
+                </option>
+              ))}
+            </datalist>
             {ejercicioErrors.nombre && (
               <p className="text-[11px] text-[var(--accent-error)] mt-1 font-inter">{ejercicioErrors.nombre.message}</p>
             )}
@@ -473,7 +493,14 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
                   className="p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-start justify-between group hover:border-[var(--accent-primary)]/40 transition-colors"
                 >
                   <div>
-                    <h5 className="text-xs font-semibold text-[var(--text-primary)] font-space">{ej.nombre}</h5>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h5 className="text-xs font-semibold text-[var(--text-primary)] font-space">{ej.nombre}</h5>
+                      {ej.grupoMuscular && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border border-[var(--accent-primary)]/20 font-inter">
+                          {ej.grupoMuscular}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-2 text-xs text-[var(--text-secondary)] font-space tabular-nums">
                       <span className="text-[var(--text-primary)] font-semibold">{ej.seriesObjetivo} series</span>
                       <span className="text-[var(--text-secondary)]">×</span>

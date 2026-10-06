@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Ejercicio, EjercicioRequest } from '../types';
+import type { Ejercicio, EjercicioRequest, EjercicioCatalogo } from '../types';
 
 export const ejerciciosApi = {
   getById: async (id: number): Promise<Ejercicio> => {
@@ -9,6 +9,18 @@ export const ejerciciosApi = {
 
   getByRutina: async (rutinaId: number): Promise<Ejercicio[]> => {
     const { data } = await apiClient.get<Ejercicio[]>(`/ejercicios/rutina/${rutinaId}`);
+    return data;
+  },
+
+  buscarCatalogo: async (query: string): Promise<EjercicioCatalogo[]> => {
+    const { data } = await apiClient.get<EjercicioCatalogo[]>('/ejercicios/buscar', {
+      params: { query },
+    });
+    return data;
+  },
+
+  getCatalogo: async (): Promise<EjercicioCatalogo[]> => {
+    const { data } = await apiClient.get<EjercicioCatalogo[]>('/ejercicios/catalogo');
     return data;
   },
 

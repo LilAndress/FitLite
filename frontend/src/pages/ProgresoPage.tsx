@@ -104,10 +104,13 @@ export const ProgresoPage: React.FC = () => {
       });
       const results = await Promise.all(promises);
       const flatEjercicios = results.flat();
-      const uniqueMap = new Map<number, Ejercicio>();
+      const uniqueMap = new Map<string, Ejercicio>();
       flatEjercicios.forEach((ej) => {
-        if (ej && ej.id && !uniqueMap.has(ej.id)) {
-          uniqueMap.set(ej.id, ej);
+        if (ej) {
+          const key = String(ej.ejercicioCatalogoId || ej.nombre || ej.id);
+          if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, ej);
+          }
         }
       });
       return Array.from(uniqueMap.values());
@@ -225,7 +228,11 @@ export const ProgresoPage: React.FC = () => {
   const filteredProgresos =
     filtroEjercicioId === 'all'
       ? progresos
-      : progresos.filter((p) => p.ejercicioId === Number(filtroEjercicioId));
+      : progresos.filter(
+          (p) =>
+            p.ejercicioId === Number(filtroEjercicioId) ||
+            (p.ejercicioCatalogoId && p.ejercicioCatalogoId === Number(filtroEjercicioId))
+        );
 
   const chartDataProgresos = [...filteredProgresos]
     .reverse()
@@ -392,8 +399,8 @@ export const ProgresoPage: React.FC = () => {
                 >
                   <option value="all">Todos los ejercicios ({ejerciciosDisponibles.length})</option>
                   {ejerciciosDisponibles.map((ej) => (
-                    <option key={ej.id} value={ej.id}>
-                      {ej.nombre}
+                    <option key={ej.id} value={ej.ejercicioCatalogoId || ej.id}>
+                      {ej.nombre} {ej.grupoMuscular ? `· ${ej.grupoMuscular}` : ''}
                     </option>
                   ))}
                 </select>
@@ -733,8 +740,8 @@ export const ProgresoPage: React.FC = () => {
               >
                 <option value="">Selecciona un ejercicio...</option>
                 {ejerciciosDisponibles.map((ej) => (
-                  <option key={ej.id} value={ej.id}>
-                    {ej.nombre} ({ej.rutinaNombre})
+                  <option key={ej.id} value={ej.ejercicioCatalogoId || ej.id}>
+                    {ej.nombre} {ej.grupoMuscular ? `· ${ej.grupoMuscular}` : ''} ({ej.rutinaNombre})
                   </option>
                 ))}
               </select>

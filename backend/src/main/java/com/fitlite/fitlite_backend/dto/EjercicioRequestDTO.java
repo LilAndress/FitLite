@@ -1,6 +1,6 @@
 package com.fitlite.fitlite_backend.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import com.fitlite.fitlite_backend.enums.GrupoMuscular;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
@@ -14,8 +14,13 @@ import lombok.NoArgsConstructor;
 @Builder
 public class EjercicioRequestDTO {
 
-    @NotBlank(message = "El nombre del ejercicio es obligatorio")
+    private Long ejercicioCatalogoId;
+
     private String nombre;
+
+    private GrupoMuscular grupoMuscular;
+
+    private String descripcionTecnica;
 
     @Positive(message = "Las series objetivo deben ser mayores a 0")
     private int seriesObjetivo;

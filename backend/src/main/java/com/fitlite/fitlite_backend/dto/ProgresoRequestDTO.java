@@ -29,6 +29,7 @@ public class ProgresoRequestDTO {
     @NotNull(message = "El ID del usuario es obligatorio")
     private Long usuarioId;
 
-    @NotNull(message = "El ID del ejercicio es obligatorio")
+    // Puede recibirse como ejercicioCatalogoId o como ejercicioId (para compatibilidad total)
+    private Long ejercicioCatalogoId;
     private Long ejercicioId;
 }

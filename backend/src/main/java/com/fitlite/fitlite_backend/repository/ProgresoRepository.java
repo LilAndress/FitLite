@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface ProgresoRepository extends JpaRepository<Progreso, Long> {
     List<Progreso> findByUsuarioIdOrderByFechaDesc(Long usuarioId);
-    List<Progreso> findByUsuarioIdAndEjercicioIdOrderByFechaDesc(Long usuarioId, Long ejercicioId);
+    List<Progreso> findByUsuarioIdAndEjercicioCatalogoIdOrderByFechaDesc(Long usuarioId, Long ejercicioCatalogoId);
 }

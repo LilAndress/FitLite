@@ -2,6 +2,7 @@ package com.fitlite.fitlite_backend.controller;
 
 import com.fitlite.fitlite_backend.dto.EjercicioRequestDTO;
 import com.fitlite.fitlite_backend.dto.EjercicioResponseDTO;
+import com.fitlite.fitlite_backend.entity.EjercicioCatalogo;
 import com.fitlite.fitlite_backend.service.EjercicioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,16 @@ import java.util.List;
 public class EjercicioController {
 
     private final EjercicioService ejercicioService;
+
+    @GetMapping("/buscar")
+    public List<EjercicioCatalogo> buscar(@RequestParam(name = "query", defaultValue = "") String query) {
+        return ejercicioService.buscarCatalogo(query);
+    }
+
+    @GetMapping("/catalogo")
+    public List<EjercicioCatalogo> obtenerCatalogoCompleto() {
+        return ejercicioService.buscarCatalogo("");
+    }
 
     @PostMapping
     public ResponseEntity<EjercicioResponseDTO> crearEjercicio(@Valid @RequestBody EjercicioRequestDTO request) {

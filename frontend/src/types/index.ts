@@ -84,18 +84,44 @@ export interface RutinaRequest {
   usuarioId: number;
 }
 
-export interface Ejercicio {
+export type GrupoMuscular =
+  | 'PECHO'
+  | 'ESPALDA'
+  | 'HOMBROS'
+  | 'BICEPS'
+  | 'TRICEPS'
+  | 'PIERNAS'
+  | 'GLUTEOS'
+  | 'CORE'
+  | 'CARDIO';
+
+export interface EjercicioCatalogo {
   id: number;
   nombre: string;
+  grupoMuscular: GrupoMuscular;
+  descripcionTecnica?: string;
+  creadoPorUsuario?: number | null;
+  fechaCreacion?: string;
+}
+
+export interface Ejercicio {
+  id: number;
+  ejercicioCatalogoId?: number;
+  nombre: string;
+  grupoMuscular?: GrupoMuscular;
+  descripcionTecnica?: string;
   seriesObjetivo: number;
   repeticionesObjetivo: number;
-  pesoObjetivo: number;
+  pesoObjetivo?: number;
   rutinaId: number;
   rutinaNombre: string;
 }
 
 export interface EjercicioRequest {
+  ejercicioCatalogoId?: number;
   nombre: string;
+  grupoMuscular?: GrupoMuscular;
+  descripcionTecnica?: string;
   seriesObjetivo: number;
   repeticionesObjetivo: number;
   pesoObjetivo?: number;
@@ -110,8 +136,10 @@ export interface Progreso {
   pesoRealizado: number;
   usuarioId: number;
   usuarioNombre: string;
+  ejercicioCatalogoId?: number;
   ejercicioId: number;
   ejercicioNombre: string;
+  grupoMuscular?: GrupoMuscular;
 }
 
 export interface ProgresoRequest {
@@ -120,5 +148,6 @@ export interface ProgresoRequest {
   repeticionesRealizadas: number;
   pesoRealizado: number;
   usuarioId: number;
-  ejercicioId: number;
+  ejercicioId?: number;
+  ejercicioCatalogoId?: number;
 }
