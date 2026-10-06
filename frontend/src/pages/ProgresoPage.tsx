@@ -36,6 +36,7 @@ import { progresosApi } from '../api/progresos.api';
 import { pesosCorporalesApi } from '../api/pesos.api';
 import { rutinasApi } from '../api/rutinas.api';
 import { ejerciciosApi } from '../api/ejercicios.api';
+import type { Ejercicio } from '../types';
 import { Modal } from '../components/Modal';
 import { StatCard } from '../components/StatCard';
 
@@ -56,6 +57,8 @@ const pesoCorporalSchema = z.object({
 type ProgresoFormValues = z.infer<typeof progresoSchema>;
 type PesoCorporalFormValues = z.infer<typeof pesoCorporalSchema>;
 
+const getTodayStr = () => new Date().toISOString().split('T')[0];
+
 export const ProgresoPage: React.FC = () => {
   const { activeUser, refreshUsers } = useUser();
   const queryClient = useQueryClient();
@@ -64,6 +67,8 @@ export const ProgresoPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPesoModalOpen, setIsPesoModalOpen] = useState(false);
   const [filtroEjercicioId, setFiltroEjercicioId] = useState<string>('all');
+  const [progresoError, setProgresoError] = useState<string | null>(null);
+  const [pesoError, setPesoError] = useState<string | null>(null);
 
   // Queries
   const { data: progresos = [], isLoading: isLoadingProgresos } = useQuery({
@@ -84,19 +89,34 @@ export const ProgresoPage: React.FC = () => {
     enabled: Boolean(activeUser),
   });
 
-  const { data: ejerciciosDisponibles = [] } = useQuery({
-    queryKey: ['ejerciciosDisponibles', rutinas.map((r) => r.id).join(',')],
+  const { data: ejerciciosDisponibles = [] } = useQuery<Ejercicio[]>({
+    queryKey: ['ejerciciosDisponibles', activeUser?.id, Array.isArray(rutinas) ? rutinas.map((r) => r.id).join(',') : ''],
     queryFn: async () => {
-      if (!rutinas || rutinas.length === 0) return [];
-      const promises = rutinas.map((r) => ejerciciosApi.getByRutina(r.id));
+      if (!Array.isArray(rutinas) || rutinas.length === 0) return [];
+      const promises = rutinas.map(async (r) => {
+        try {
+          const res = await ejerciciosApi.getByRutina(r.id);
+          return Array.isArray(res) ? res : [];
+        } catch (err) {
+          console.error(`Error al cargar ejercicios de la rutina ${r.id}:`, err);
+          return [];
+        }
+      });
       const results = await Promise.all(promises);
-      return results.flat();
+      const flatEjercicios = results.flat();
+      const uniqueMap = new Map<number, Ejercicio>();
+      flatEjercicios.forEach((ej) => {
+        if (ej && ej.id && !uniqueMap.has(ej.id)) {
+          uniqueMap.set(ej.id, ej);
+        }
+      });
+      return Array.from(uniqueMap.values());
     },
-    enabled: rutinas.length > 0,
+    enabled: Boolean(activeUser) && Array.isArray(rutinas) && rutinas.length > 0,
   });
 
   // Forms setup
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayStr();
   const {
     register: registerProgreso,
     handleSubmit: handleSubmitProgreso,
@@ -131,7 +151,11 @@ export const ProgresoPage: React.FC = () => {
     mutationFn: (data: ProgresoFormValues) => {
       if (!activeUser) throw new Error('No user selected');
       return progresosApi.create({
-        ...data,
+        ejercicioId: Number(data.ejercicioId),
+        fecha: data.fecha,
+        seriesRealizadas: Number(data.seriesRealizadas),
+        repeticionesRealizadas: Number(data.repeticionesRealizadas),
+        pesoRealizado: Number(data.pesoRealizado),
         usuarioId: activeUser.id,
       });
     },
@@ -139,6 +163,11 @@ export const ProgresoPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['progresos', activeUser?.id] });
       setIsModalOpen(false);
       resetProgreso();
+      setProgresoError(null);
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || err.message || 'Error al registrar el progreso';
+      setProgresoError(msg);
     },
   });
 
@@ -153,7 +182,7 @@ export const ProgresoPage: React.FC = () => {
     mutationFn: (data: PesoCorporalFormValues) => {
       if (!activeUser) throw new Error('No user selected');
       return pesosCorporalesApi.create({
-        peso: data.peso,
+        peso: Number(data.peso),
         fecha: data.fecha,
         usuarioId: activeUser.id,
         notas: data.notas?.trim() || undefined,
@@ -164,6 +193,11 @@ export const ProgresoPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['pesosCorporales', activeUser?.id] });
       setIsPesoModalOpen(false);
       resetPeso();
+      setPesoError(null);
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || err.message || 'Error al registrar el pesaje corporal';
+      setPesoError(msg);
     },
   });
 
@@ -271,7 +305,11 @@ export const ProgresoPage: React.FC = () => {
           {/* Primary Action Button */}
           {activeTab === 'cargas' ? (
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                resetProgreso();
+                setProgresoError(null);
+                setIsModalOpen(true);
+              }}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter"
             >
               <Plus className="w-4 h-4" strokeWidth={2.5} />
@@ -281,10 +319,11 @@ export const ProgresoPage: React.FC = () => {
             <button
               onClick={() => {
                 resetPeso({
-                  fecha: todayStr,
+                  fecha: getTodayStr(),
                   peso: pesoActual || 70,
                   notas: '',
                 });
+                setPesoError(null);
                 setIsPesoModalOpen(true);
               }}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter"
@@ -514,7 +553,10 @@ export const ProgresoPage: React.FC = () => {
               </div>
 
               <button
-                onClick={() => setIsPesoModalOpen(true)}
+                onClick={() => {
+                  setPesoError(null);
+                  setIsPesoModalOpen(true);
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-xs text-[var(--text-primary)] hover:border-[var(--accent-primary)] transition-all font-inter"
               >
                 <Plus className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
@@ -527,7 +569,10 @@ export const ProgresoPage: React.FC = () => {
                 <Scale className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
                 <p className="text-xs font-inter">No hay registros de peso corporal todavía.</p>
                 <button
-                  onClick={() => setIsPesoModalOpen(true)}
+                  onClick={() => {
+                    setPesoError(null);
+                    setIsPesoModalOpen(true);
+                  }}
                   className="mt-3 px-4 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold font-inter hover:brightness-105 active:scale-95 transition-all"
                 >
                   Registrar primer pesaje
@@ -657,10 +702,22 @@ export const ProgresoPage: React.FC = () => {
       {/* Modal Registrar Progreso de Carga de Ejercicio */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setProgresoError(null);
+        }}
         title="Registrar sesión de entrenamiento"
       >
-        <form onSubmit={handleSubmitProgreso((data) => createProgresoMutation.mutate(data))} className="space-y-4">
+        {progresoError && (
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-inter flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{progresoError}</span>
+          </div>
+        )}
+        <form onSubmit={handleSubmitProgreso((data) => {
+          setProgresoError(null);
+          createProgresoMutation.mutate(data);
+        })} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
               Ejercicio *
@@ -768,10 +825,22 @@ export const ProgresoPage: React.FC = () => {
       {/* Modal Registrar Pesaje Corporal */}
       <Modal
         isOpen={isPesoModalOpen}
-        onClose={() => setIsPesoModalOpen(false)}
+        onClose={() => {
+          setIsPesoModalOpen(false);
+          setPesoError(null);
+        }}
         title="Registrar pesaje corporal"
       >
-        <form onSubmit={handleSubmitPeso((data) => createPesoMutation.mutate(data))} className="space-y-4">
+        {pesoError && (
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-inter flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{pesoError}</span>
+          </div>
+        )}
+        <form onSubmit={handleSubmitPeso((data) => {
+          setPesoError(null);
+          createPesoMutation.mutate(data);
+        })} className="space-y-4">
           <p className="text-xs text-[var(--text-secondary)] font-inter">
             Registra una nueva medición de peso. Se actualizará en tu perfil y quedará asentado en la tabla de seguimiento histórico.
           </p>

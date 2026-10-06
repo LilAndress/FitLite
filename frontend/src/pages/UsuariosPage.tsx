@@ -25,13 +25,13 @@ import { useUser } from '../context/UserContext';
 import { usuariosApi } from '../api/usuarios.api';
 import { Modal } from '../components/Modal';
 import { Badge } from '../components/Badge';
-import type { Usuario } from '../types';
+import type { Usuario, UsuarioRequest } from '../types';
 
 const usuarioSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Ingresa un correo electrónico válido'),
   password: z.string().min(4, 'La contraseña debe tener al menos 4 caracteres'),
-  pesoActual: z.coerce.number().positive('El peso debe ser mayor a 0').optional(),
+  pesoActual: z.number().positive('El peso debe ser mayor a 0').optional(),
   objetivo: z.enum(['PERDER_PESO', 'GANAR_MASA', 'MANTENER', 'RESISTENCIA'] as const),
   rol: z.enum(['USUARIO', 'ENTRENADOR', 'ADMIN'] as const),
 });
@@ -84,7 +84,17 @@ export const UsuariosPage: React.FC = () => {
 
   // Mutación para crear usuario desde el panel de administración
   const createUsuarioMutation = useMutation({
-    mutationFn: (data: UsuarioFormValues) => usuariosApi.create(data),
+    mutationFn: (data: UsuarioFormValues) => {
+      const payload: UsuarioRequest = {
+        nombre: data.nombre.trim(),
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+        objetivo: data.objetivo,
+        rol: data.rol,
+        pesoActual: data.pesoActual !== undefined ? Number(data.pesoActual) : undefined,
+      };
+      return usuariosApi.create(payload);
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       await refetchUsers();
@@ -546,7 +556,9 @@ export const UsuariosPage: React.FC = () => {
                 Peso inicial (kg)
               </label>
               <input
-                {...register('pesoActual')}
+                {...register('pesoActual', {
+                  setValueAs: (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+                })}
                 type="number"
                 step="0.1"
                 placeholder="75.5"
