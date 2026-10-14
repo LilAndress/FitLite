@@ -5,6 +5,7 @@ import com.fitlite.fitlite_backend.dto.EjercicioResponseDTO;
 import com.fitlite.fitlite_backend.entity.EjercicioCatalogo;
 import com.fitlite.fitlite_backend.entity.Rutina;
 import com.fitlite.fitlite_backend.entity.RutinaEjercicio;
+import com.fitlite.fitlite_backend.enums.GrupoMuscular;
 import com.fitlite.fitlite_backend.exception.ResourceNotFoundException;
 import com.fitlite.fitlite_backend.repository.EjercicioCatalogoRepository;
 import com.fitlite.fitlite_backend.repository.RutinaEjercicioRepository;
@@ -91,10 +92,21 @@ public class EjercicioService {
 
     @Transactional(readOnly = true)
     public List<EjercicioCatalogo> buscarCatalogo(String query) {
-        if (query == null || query.trim().isEmpty()) {
+        return buscarCatalogo(query, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EjercicioCatalogo> buscarCatalogo(String query, GrupoMuscular grupoMuscular) {
+        boolean hasQuery = query != null && !query.trim().isEmpty();
+        if (hasQuery && grupoMuscular != null) {
+            return ejercicioCatalogoRepository.findByNombreContainingIgnoreCaseAndGrupoMuscular(query.trim(), grupoMuscular);
+        } else if (hasQuery) {
+            return ejercicioCatalogoRepository.findByNombreContainingIgnoreCase(query.trim());
+        } else if (grupoMuscular != null) {
+            return ejercicioCatalogoRepository.findByGrupoMuscular(grupoMuscular);
+        } else {
             return ejercicioCatalogoRepository.findAll();
         }
-        return ejercicioCatalogoRepository.findByNombreContainingIgnoreCase(query.trim());
     }
 
     @Transactional

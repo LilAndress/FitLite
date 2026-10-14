@@ -21,8 +21,10 @@ public class EjercicioController {
     private final EjercicioService ejercicioService;
 
     @GetMapping("/buscar")
-    public List<EjercicioCatalogo> buscar(@RequestParam(name = "query", defaultValue = "") String query) {
-        return ejercicioService.buscarCatalogo(query);
+    public List<EjercicioCatalogo> buscar(
+            @RequestParam(name = "query", defaultValue = "") String query,
+            @RequestParam(name = "grupoMuscular", required = false) com.fitlite.fitlite_backend.enums.GrupoMuscular grupoMuscular) {
+        return ejercicioService.buscarCatalogo(query, grupoMuscular);
     }
 
     @GetMapping("/catalogo")

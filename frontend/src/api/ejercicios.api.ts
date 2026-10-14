@@ -12,9 +12,12 @@ export const ejerciciosApi = {
     return data;
   },
 
-  buscarCatalogo: async (query: string): Promise<EjercicioCatalogo[]> => {
+  buscarCatalogo: async (query?: string, grupoMuscular?: string): Promise<EjercicioCatalogo[]> => {
+    const params: Record<string, string> = {};
+    if (query && query.trim()) params.query = query.trim();
+    if (grupoMuscular && grupoMuscular !== 'TODOS') params.grupoMuscular = grupoMuscular;
     const { data } = await apiClient.get<EjercicioCatalogo[]>('/ejercicios/buscar', {
-      params: { query },
+      params,
     });
     return data;
   },
