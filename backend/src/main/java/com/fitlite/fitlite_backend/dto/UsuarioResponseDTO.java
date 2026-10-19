@@ -28,4 +28,5 @@ public class UsuarioResponseDTO {
     private LocalDateTime fechaRegistro;
     private Boolean activo;
     private LocalDateTime ultimoAcceso;
+    private PerfilSaludResponseDTO perfilSalud;
 }

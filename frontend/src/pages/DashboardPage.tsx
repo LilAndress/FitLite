@@ -14,7 +14,16 @@ import {
   Target,
   Scale,
   Edit3,
-  Clock
+  Clock,
+  Building2,
+  Home,
+  Trees,
+  HeartPulse,
+  ShieldAlert,
+  Check,
+  Sparkles,
+  AlertCircle,
+  Bot
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useUser } from '../context/UserContext';
@@ -26,6 +35,25 @@ import { Badge } from '../components/Badge';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { CircularProgress } from '../components/CircularProgress';
 import { Modal } from '../components/Modal';
+import type { LugarEntrenamiento } from '../types';
+
+const EQUIPAMIENTOS_LIST = [
+  { id: 'PESO_CORPORAL', label: 'Peso Corporal' },
+  { id: 'MANCUERNAS', label: 'Mancuernas' },
+  { id: 'BANDAS_RESISTENCIA', label: 'Bandas Elásticas' },
+  { id: 'BARRA_Y_DISCOS', label: 'Barra y Discos' },
+  { id: 'MAQUINAS_GYM', label: 'Máquinas de Gimnasio' },
+];
+
+const ZONAS_MOLESTIA_LIST = [
+  { id: 'NINGUNA', label: 'Sin molestias articulares' },
+  { id: 'RODILLAS', label: 'Rodillas' },
+  { id: 'LUMBARES', label: 'Espalda Baja / Lumbares' },
+  { id: 'HOMBROS', label: 'Hombros / Manguito' },
+  { id: 'CUELLO', label: 'Cuello / Cervicales' },
+  { id: 'MUNECAS', label: 'Muñecas' },
+  { id: 'TOBILLOS', label: 'Tobillos' },
+];
 
 export const DashboardPage: React.FC = () => {
   const { activeUser, users, refreshUsers } = useUser();
@@ -37,6 +65,82 @@ export const DashboardPage: React.FC = () => {
   const [fechaInput, setFechaInput] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [notasInput, setNotasInput] = useState<string>('');
   const [pesoError, setPesoError] = useState<string | null>(null);
+
+  // Estado para modal de Perfil de Salud & IA
+  const [isSaludModalOpen, setIsSaludModalOpen] = useState(false);
+  const [saludLugar, setSaludLugar] = useState<LugarEntrenamiento>('GIMNASIO');
+  const [saludDias, setSaludDias] = useState<number>(4);
+  const [saludMinutos, setSaludMinutos] = useState<number>(60);
+  const [saludEquipo, setSaludEquipo] = useState<string[]>(['MANCUERNAS', 'MAQUINAS_GYM']);
+  const [saludMolestias, setSaludMolestias] = useState<string[]>(['NINGUNA']);
+  const [saludTieneDiscapacidad, setSaludTieneDiscapacidad] = useState<boolean>(false);
+  const [saludDetalleDiscapacidad, setSaludDetalleDiscapacidad] = useState<string>('');
+  const [saludEnfermedades, setSaludEnfermedades] = useState<string>('');
+  const [saludError, setSaludError] = useState<string | null>(null);
+
+  const abrirModalSalud = () => {
+    const p = activeUser?.perfilSalud;
+    setSaludLugar(p?.lugarEntrenamiento || 'GIMNASIO');
+    setSaludDias(p?.diasDisponiblesSemana || 4);
+    setSaludMinutos(p?.minutosPorSesion || 60);
+    setSaludEquipo(p?.equipamientoDisponible && p.equipamientoDisponible.length > 0 ? p.equipamientoDisponible : ['MANCUERNAS', 'MAQUINAS_GYM']);
+    setSaludMolestias(p?.zonasMolestia && p.zonasMolestia.length > 0 ? p.zonasMolestia : ['NINGUNA']);
+    setSaludTieneDiscapacidad(Boolean(p?.tieneDiscapacidad));
+    setSaludDetalleDiscapacidad(p?.detalleDiscapacidad || '');
+    setSaludEnfermedades(p?.enfermedadesPreexistentes || '');
+    setSaludError(null);
+    setIsSaludModalOpen(true);
+  };
+
+  const toggleSaludMolestia = (id: string) => {
+    if (id === 'NINGUNA') {
+      setSaludMolestias(['NINGUNA']);
+      return;
+    }
+    setSaludMolestias((prev) => {
+      const sinNinguna = prev.filter((m) => m !== 'NINGUNA');
+      if (sinNinguna.includes(id)) {
+        const next = sinNinguna.filter((m) => m !== id);
+        return next.length === 0 ? ['NINGUNA'] : next;
+      } else {
+        return [...sinNinguna, id];
+      }
+    });
+  };
+
+  const toggleSaludEquipo = (id: string) => {
+    setSaludEquipo((prev) => {
+      if (prev.includes(id)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((e) => e !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
+  const updateSaludMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeUser) throw new Error('No hay usuario activo');
+      return usuariosApi.updatePerfilSalud(activeUser.id, {
+        tieneDiscapacidad: saludTieneDiscapacidad,
+        detalleDiscapacidad: saludTieneDiscapacidad ? saludDetalleDiscapacidad.trim() : undefined,
+        zonasMolestia: saludMolestias.includes('NINGUNA') ? [] : saludMolestias,
+        enfermedadesPreexistentes: saludEnfermedades.trim() || undefined,
+        lugarEntrenamiento: saludLugar,
+        equipamientoDisponible: saludEquipo,
+        diasDisponiblesSemana: saludDias,
+        minutosPorSesion: saludMinutos,
+      });
+    },
+    onSuccess: async () => {
+      await refreshUsers();
+      setIsSaludModalOpen(false);
+    },
+    onError: (err: any) => {
+      setSaludError(err.response?.data?.message || err.message || 'Error al guardar el perfil de salud');
+    },
+  });
 
   // Tab para selector de gráfica en el dashboard
   const [graficaTab, setGraficaTab] = useState<'ejercicios' | 'peso'>('ejercicios');
@@ -349,36 +453,68 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ALERTA DEL MOTOR DE IA */}
-      <div className="bg-[var(--accent-secondary)]/10 border border-[var(--accent-secondary)]/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start sm:items-center gap-3.5">
-          <div className="w-8 h-8 rounded-full bg-[var(--accent-secondary)] text-[#0D1117] flex items-center justify-center shrink-0 font-bold">
+      {/* ALERTA DEL MOTOR DE IA / PERFIL DE SALUD Y SEGURIDAD */}
+      <div className="bg-[var(--accent-secondary)]/10 border border-[var(--accent-secondary)]/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <div className="w-9 h-9 rounded-full bg-[var(--accent-secondary)] text-[#0D1117] flex items-center justify-center shrink-0 font-bold shadow-sm">
             <Zap className="w-4 h-4" strokeWidth={2.5} />
           </div>
-          <div>
+          <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-[var(--accent-secondary)] font-space">
-                Ajuste del motor de IA
+                Calibración del Motor IA
               </span>
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--accent-secondary)]/20 text-[var(--accent-secondary)] border border-[var(--accent-secondary)]/40 font-inter">
-                Calibración inteligente
-              </span>
+              {activeUser?.perfilSalud && (
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-inter">
+                  Perfil de salud activo
+                </span>
+              )}
             </div>
-            <p className="text-xs text-[var(--text-primary)] font-inter mt-0.5">
-              {pesoActual
-                ? `Peso actual sincronizado en ${pesoActual} kg con objetivo ${activeUser?.objetivo}. Progresión de cargas adaptada.`
-                : 'Registra tu peso corporal actual para permitir al algoritmo calibrar tus requerimientos de carga.'}
+            <p className="text-xs text-[var(--text-primary)] font-inter">
+              {activeUser?.perfilSalud ? (
+                <>
+                  Entrenando en <strong className="text-[var(--accent-primary)]">{activeUser.perfilSalud.lugarEntrenamiento?.toLowerCase()}</strong> ({activeUser.perfilSalud.diasDisponiblesSemana} días/sem · {activeUser.perfilSalud.minutosPorSesion} min).
+                  {activeUser.perfilSalud.zonasMolestia && activeUser.perfilSalud.zonasMolestia.length > 0 && (
+                    <span className="text-amber-300 ml-1">
+                      Zonas protegidas contra impacto: {activeUser.perfilSalud.zonasMolestia.join(', ')}.
+                    </span>
+                  )}
+                  {activeUser.perfilSalud.tieneDiscapacidad && activeUser.perfilSalud.detalleDiscapacidad && (
+                    <span className="text-sky-300 ml-1">
+                      Adaptación motriz: {activeUser.perfilSalud.detalleDiscapacidad}.
+                    </span>
+                  )}
+                </>
+              ) : (
+                'Registra tus restricciones articulares, equipo disponible y condiciones de salud para que la IA calibre tus cargas y rutinas con máxima seguridad.'
+              )}
             </p>
           </div>
         </div>
 
-        <Link
-          to="/rutinas"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-secondary)] hover:opacity-80 transition-opacity font-inter whitespace-nowrap self-end sm:self-center"
-        >
-          <span>Ver rutina calibrada</span>
-          <span>→</span>
-        </Link>
+        <div className="flex items-center gap-2.5 flex-wrap self-end md:self-center">
+          <Link
+            to="/coach"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[#0D1117] text-xs font-bold hover:brightness-110 transition-all active:scale-95 font-inter cursor-pointer shadow-md shadow-[var(--accent-primary)]/20"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span>Hablar con Coach IA</span>
+          </Link>
+          <button
+            onClick={abrirModalSalud}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--accent-primary)]/15 border border-[var(--accent-primary)]/40 text-[var(--accent-primary)] text-xs font-semibold hover:bg-[var(--accent-primary)]/25 transition-all active:scale-95 font-inter cursor-pointer shadow-sm"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{activeUser?.perfilSalud ? 'Modificar salud e IA' : 'Configurar salud e IA'}</span>
+          </button>
+          <Link
+            to="/rutinas"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-secondary)] hover:opacity-80 transition-opacity font-inter whitespace-nowrap bg-[var(--accent-secondary)]/10 px-3.5 py-2 rounded-xl border border-[var(--accent-secondary)]/30"
+          >
+            <span>Ver rutinas</span>
+            <span>→</span>
+          </Link>
+        </div>
       </div>
 
       {/* Gráfica de Progreso y Listado de Rutinas */}
@@ -669,6 +805,233 @@ export const DashboardPage: React.FC = () => {
               className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
             >
               {updatePesoMutation.isPending ? 'Guardando...' : 'Guardar y registrar'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal de Configuración de Perfil de Salud & IA */}
+      <Modal
+        isOpen={isSaludModalOpen}
+        onClose={() => setIsSaludModalOpen(false)}
+        title="Perfil de Salud, Restricciones y Entorno IA"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            updateSaludMutation.mutate();
+          }}
+          className="space-y-4"
+        >
+          {saludError && (
+            <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs flex items-start gap-2 font-inter">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{saludError}</span>
+            </div>
+          )}
+
+          {/* Lugar de entrenamiento */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Lugar habitual de entrenamiento
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'GIMNASIO' as const, label: 'Gimnasio', icon: Building2 },
+                { id: 'CASA' as const, label: 'En Casa', icon: Home },
+                { id: 'CALISTENIA_PARQUE' as const, label: 'Parque', icon: Trees },
+              ].map((loc) => {
+                const Icon = loc.icon;
+                const isSelected = saludLugar === loc.id;
+                return (
+                  <button
+                    key={loc.id}
+                    type="button"
+                    onClick={() => setSaludLugar(loc.id)}
+                    className={`p-2.5 rounded-xl border text-center transition-all font-inter flex flex-col items-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--accent-primary)]/15 border-[var(--accent-primary)] text-[var(--accent-primary)] font-semibold'
+                        : 'bg-[var(--bg-primary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-xs">{loc.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Frecuencia y Duración */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+                Días por semana
+              </label>
+              <div className="flex gap-1.5">
+                {[2, 3, 4, 5, 6].map((days) => (
+                  <button
+                    key={days}
+                    type="button"
+                    onClick={() => setSaludDias(days)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-space font-medium transition-all cursor-pointer ${
+                      saludDias === days
+                        ? 'bg-[var(--accent-primary)] text-[#0D1117] font-bold'
+                        : 'bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-white'
+                    }`}
+                  >
+                    {days}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+                Minutos por sesión
+              </label>
+              <div className="flex gap-1.5">
+                {[30, 45, 60, 90].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setSaludMinutos(mins)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-space font-medium transition-all cursor-pointer ${
+                      saludMinutos === mins
+                        ? 'bg-[var(--accent-primary)] text-[#0D1117] font-bold'
+                        : 'bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-white'
+                    }`}
+                  >
+                    {mins}'
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Equipamiento disponible */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
+              Equipamiento disponible
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {EQUIPAMIENTOS_LIST.map((item) => {
+                const isChecked = saludEquipo.includes(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => toggleSaludEquipo(item.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-inter transition-all flex items-center gap-1 border cursor-pointer ${
+                      isChecked
+                        ? 'bg-[var(--accent-primary)]/15 border-[var(--accent-primary)] text-[var(--accent-primary)] font-semibold'
+                        : 'bg-[var(--bg-primary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-white'
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3" />}
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Dolores o molestias articulares */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-[var(--text-secondary)] font-inter flex items-center gap-1">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                Zonas con dolor o molestia (a proteger):
+              </label>
+              <span className="text-[10px] text-[var(--text-secondary)] opacity-80">
+                {saludMolestias.includes('NINGUNA') ? 'Sin dolor' : `${saludMolestias.length} zona(s)`}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {ZONAS_MOLESTIA_LIST.map((zona) => {
+                const isChecked = saludMolestias.includes(zona.id);
+                const isNone = zona.id === 'NINGUNA';
+                return (
+                  <button
+                    key={zona.id}
+                    type="button"
+                    onClick={() => toggleSaludMolestia(zona.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-inter transition-all flex items-center gap-1 border cursor-pointer ${
+                      isChecked
+                        ? isNone
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
+                          : 'bg-amber-500/20 border-amber-500 text-amber-300 font-semibold'
+                        : 'bg-[var(--bg-primary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-white'
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3" />}
+                    <span>{zona.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Discapacidad o limitación física */}
+          <div className="p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--text-primary)] font-inter">
+                ¿Presentas alguna discapacidad o limitación motriz?
+              </span>
+              <button
+                type="button"
+                onClick={() => setSaludTieneDiscapacidad(!saludTieneDiscapacidad)}
+                className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${
+                  saludTieneDiscapacidad ? 'bg-[var(--accent-primary)]' : 'bg-white/10'
+                }`}
+              >
+                <div
+                  className={`w-3.5 h-3.5 rounded-full bg-black transition-transform absolute top-0.5 ${
+                    saludTieneDiscapacidad ? 'translate-x-5' : 'translate-x-0.5 bg-white/70'
+                  }`}
+                />
+              </button>
+            </div>
+            {saludTieneDiscapacidad && (
+              <input
+                type="text"
+                value={saludDetalleDiscapacidad}
+                onChange={(e) => setSaludDetalleDiscapacidad(e.target.value)}
+                placeholder="Detalle: ej. movilidad reducida en tren inferior, prótesis..."
+                className="w-full px-3 py-2 rounded-lg bg-[#0D1117] border border-amber-500/40 text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/40 focus:outline-none focus:border-amber-400 font-inter"
+              />
+            )}
+          </div>
+
+          {/* Enfermedades preexistentes */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5 flex items-center gap-1">
+              <HeartPulse className="w-3.5 h-3.5 text-rose-400" />
+              Enfermedades o condiciones de salud (Opcional):
+            </label>
+            <input
+              type="text"
+              value={saludEnfermedades}
+              onChange={(e) => setSaludEnfermedades(e.target.value)}
+              placeholder="Ej. Asma, hipertensión arterial, diabetes..."
+              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/40 focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border)]">
+            <button
+              type="button"
+              onClick={() => setIsSaludModalOpen(false)}
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={updateSaludMutation.isPending}
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-bold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter cursor-pointer flex items-center gap-1.5 shadow-md"
+            >
+              {updateSaludMutation.isPending ? 'Guardando...' : 'Guardar y calibrar IA'}
             </button>
           </div>
         </form>

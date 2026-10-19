@@ -43,4 +43,6 @@ public class UsuarioRequestDTO {
     private Double estatura;
 
     private NivelExperiencia nivelExperiencia;
+
+    private PerfilSaludRequestDTO perfilSalud;
 }

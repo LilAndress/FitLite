@@ -8,6 +8,8 @@ import { RutinasPage } from './pages/RutinasPage';
 import { ProgresoPage } from './pages/ProgresoPage';
 import { UsuariosPage } from './pages/UsuariosPage';
 import { AuthPage } from './pages/AuthPage';
+import { CoachIaPage } from './pages/CoachIaPage';
+import { CoachIaFloatingWidget } from './components/CoachIaFloatingWidget';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,10 +42,12 @@ function AppContent() {
           <Route path="/registro" element={<AuthPage />} />
           <Route path="/rutinas" element={activeUser ? <RutinasPage /> : <Navigate to="/login" replace />} />
           <Route path="/progreso" element={activeUser ? <ProgresoPage /> : <Navigate to="/login" replace />} />
+          <Route path="/coach" element={activeUser ? <CoachIaPage /> : <Navigate to="/login" replace />} />
           <Route path="/usuarios" element={activeUser ? <UsuariosPage /> : <Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <CoachIaFloatingWidget />
       {!hideAppNavbar && (
         <footer className="border-t border-[var(--border)] bg-[var(--surface)] py-5 text-center text-xs text-[var(--text-secondary)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">

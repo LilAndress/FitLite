@@ -405,6 +405,34 @@ export const UsuariosPage: React.FC = () => {
                         {u.ultimoAcceso ? u.ultimoAcceso.replace('T', ' ').slice(0, 16) : 'Sin accesos'}
                       </span>
                     </div>
+
+                    {/* Resumen de Salud y Restricciones IA */}
+                    {u.perfilSalud && (
+                      <div className="pt-2 border-t border-[var(--border)]/60 text-[11px] space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[var(--text-secondary)]">Lugar / Tiempo:</span>
+                          <span className="text-[var(--accent-primary)] font-medium">
+                            {u.perfilSalud.lugarEntrenamiento || 'GIMNASIO'} ({u.perfilSalud.diasDisponiblesSemana || 4}d · {u.perfilSalud.minutosPorSesion || 60}')
+                          </span>
+                        </div>
+                        {u.perfilSalud.zonasMolestia && u.perfilSalud.zonasMolestia.length > 0 && (
+                          <div className="flex items-center justify-between text-amber-300">
+                            <span>Zonas a proteger:</span>
+                            <span className="font-medium truncate max-w-[150px]" title={u.perfilSalud.zonasMolestia.join(', ')}>
+                              {u.perfilSalud.zonasMolestia.join(', ')}
+                            </span>
+                          </div>
+                        )}
+                        {u.perfilSalud.tieneDiscapacidad && (
+                          <div className="flex items-center justify-between text-sky-300">
+                            <span>Discapacidad:</span>
+                            <span className="font-medium truncate max-w-[150px]" title={u.perfilSalud.detalleDiscapacidad || 'Registrada'}>
+                              {u.perfilSalud.detalleDiscapacidad || 'Registrada'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 

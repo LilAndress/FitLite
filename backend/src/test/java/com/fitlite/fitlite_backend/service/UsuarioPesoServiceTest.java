@@ -34,6 +34,9 @@ class UsuarioPesoServiceTest {
     @Mock
     private PesoCorporalRepository pesoCorporalRepository;
 
+    @Mock
+    private PerfilSaludService perfilSaludService;
+
     @InjectMocks
     private UsuarioService usuarioService;
 

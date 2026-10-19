@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Usuario, UsuarioRequest, ActualizarPesoRequest } from '../types';
+import type { Usuario, UsuarioRequest, ActualizarPesoRequest, PerfilSalud, PerfilSaludRequest } from '../types';
 
 const getAuthHeaders = (): Record<string, string> => {
   try {
@@ -64,6 +64,16 @@ export const usuariosApi = {
     const { data } = await apiClient.patch<Usuario>(`/usuarios/${id}/estado`, {}, {
       headers: getAuthHeaders(),
     });
+    return data;
+  },
+
+  getPerfilSalud: async (usuarioId: number): Promise<PerfilSalud> => {
+    const { data } = await apiClient.get<PerfilSalud>(`/usuarios/${usuarioId}/perfil-salud`);
+    return data;
+  },
+
+  updatePerfilSalud: async (usuarioId: number, perfil: PerfilSaludRequest): Promise<PerfilSalud> => {
+    const { data } = await apiClient.put<PerfilSalud>(`/usuarios/${usuarioId}/perfil-salud`, perfil);
     return data;
   },
 };

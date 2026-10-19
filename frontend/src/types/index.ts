@@ -2,6 +2,33 @@ export type ObjetivoFisico = 'PERDER_PESO' | 'GANAR_MASA' | 'MANTENER' | 'RESIST
 export type RolUsuario = 'USUARIO' | 'ENTRENADOR' | 'ADMIN';
 export type NivelExperiencia = 'PRINCIPIANTE' | 'INTERMEDIO' | 'AVANZADO';
 
+export type LugarEntrenamiento = 'GIMNASIO' | 'CASA' | 'CALISTENIA_PARQUE';
+
+export interface PerfilSalud {
+  id?: number;
+  usuarioId?: number;
+  tieneDiscapacidad: boolean;
+  detalleDiscapacidad?: string;
+  zonasMolestia: string[];
+  enfermedadesPreexistentes?: string;
+  lugarEntrenamiento: LugarEntrenamiento;
+  equipamientoDisponible: string[];
+  diasDisponiblesSemana: number;
+  minutosPorSesion: number;
+  fechaActualizacion?: string;
+}
+
+export interface PerfilSaludRequest {
+  tieneDiscapacidad: boolean;
+  detalleDiscapacidad?: string;
+  zonasMolestia: string[];
+  enfermedadesPreexistentes?: string;
+  lugarEntrenamiento: LugarEntrenamiento;
+  equipamientoDisponible: string[];
+  diasDisponiblesSemana: number;
+  minutosPorSesion: number;
+}
+
 export interface Usuario {
   id: number;
   nombre: string;
@@ -15,6 +42,7 @@ export interface Usuario {
   activo: boolean;
   ultimoAcceso?: string | null;
   fechaRegistro: string;
+  perfilSalud?: PerfilSalud | null;
 }
 
 export interface UsuarioRequest {
@@ -27,6 +55,7 @@ export interface UsuarioRequest {
   edad?: number | null;
   estatura?: number | null;
   nivelExperiencia?: NivelExperiencia | null;
+  perfilSalud?: PerfilSaludRequest;
 }
 
 export interface LoginRequest {
@@ -43,6 +72,7 @@ export interface RegistroRequest {
   pesoActual: number;
   nivelExperiencia: NivelExperiencia;
   objetivo: ObjetivoFisico;
+  perfilSalud?: PerfilSaludRequest;
 }
 
 export interface ActualizarPesoRequest {
@@ -151,3 +181,24 @@ export interface ProgresoRequest {
   ejercicioId?: number;
   ejercicioCatalogoId?: number;
 }
+
+export interface MensajeChat {
+  id?: number;
+  rol: 'USER' | 'MODEL';
+  contenido: string;
+  fechaCreacion?: string;
+}
+
+export interface ChatRequest {
+  usuarioId: number;
+  mensaje: string;
+}
+
+export interface ChatResponse {
+  respuesta: string;
+  rol: 'MODEL';
+  fecha: string;
+  apiConfigurada?: boolean;
+  advertencia?: string;
+}
+

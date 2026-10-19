@@ -4,6 +4,7 @@ import com.fitlite.fitlite_backend.dto.ActualizarPesoRequestDTO;
 import com.fitlite.fitlite_backend.dto.LoginRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioRequestDTO;
 import com.fitlite.fitlite_backend.dto.UsuarioResponseDTO;
+import com.fitlite.fitlite_backend.dto.PerfilSaludResponseDTO;
 import com.fitlite.fitlite_backend.entity.PesoCorporal;
 import com.fitlite.fitlite_backend.entity.Usuario;
 import com.fitlite.fitlite_backend.enums.RolUsuario;
@@ -24,6 +25,7 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PesoCorporalRepository pesoCorporalRepository;
+    private final PerfilSaludService perfilSaludService;
 
     @Transactional
     public UsuarioResponseDTO crearUsuario(UsuarioRequestDTO request) {
@@ -57,7 +59,13 @@ public class UsuarioService {
             pesoCorporalRepository.save(pesoInicial);
         }
 
-        return mapToResponse(guardado);
+        UsuarioResponseDTO response = mapToResponse(guardado);
+        if (request.getPerfilSalud() != null) {
+            PerfilSaludResponseDTO perfilRes = perfilSaludService.guardarOActualizarPerfil(guardado.getId(), request.getPerfilSalud());
+            response.setPerfilSalud(perfilRes);
+        }
+
+        return response;
     }
 
     @Transactional
@@ -195,6 +203,7 @@ public class UsuarioService {
                 .estatura(usuario.getEstatura())
                 .nivelExperiencia(usuario.getNivelExperiencia())
                 .fechaRegistro(usuario.getFechaRegistro())
+                .perfilSalud(usuario.getPerfilSalud() != null ? perfilSaludService.mapToResponse(usuario.getPerfilSalud()) : null)
                 .build();
     }
 }

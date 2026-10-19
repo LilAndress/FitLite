@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, UserCircle2, LogOut } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, UserCircle2, LogOut, Sparkles } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 export const Navbar: React.FC = () => {
@@ -11,6 +11,7 @@ export const Navbar: React.FC = () => {
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Rutinas', path: '/rutinas', icon: Calendar },
     { label: 'Progreso', path: '/progreso', icon: LineChart },
+    { label: 'Coach IA', path: '/coach', icon: Sparkles },
     ...(activeUser?.rol === 'ADMIN' ? [{ label: 'Usuarios', path: '/usuarios', icon: Users }] : []),
   ];
 
