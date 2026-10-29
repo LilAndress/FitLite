@@ -111,6 +111,7 @@ public class RutinaService {
                 .descripcion(rutina.getDescripcion())
                 .fechaAsignacion(rutina.getFechaAsignacion())
                 .activa(rutina.isActiva())
+                .generadaPorIa(rutina.isGeneradaPorIa())
                 .usuarioId(rutina.getUsuario().getId())
                 .usuarioNombre(rutina.getUsuario().getNombre())
                 .build();

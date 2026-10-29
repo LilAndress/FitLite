@@ -18,6 +18,7 @@ public class RutinaResponseDTO {
     private String descripcion;
     private LocalDateTime fechaAsignacion;
     private boolean activa;
+    private boolean generadaPorIa;
     private Long usuarioId;
     private String usuarioNombre;
 }

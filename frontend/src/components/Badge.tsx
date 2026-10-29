@@ -2,7 +2,7 @@ import React from 'react';
 import type { ObjetivoFisico, RolUsuario } from '../types';
 
 interface BadgeProps {
-  type: 'objetivo' | 'rol' | 'status' | 'ai' | 'error';
+  type: 'objetivo' | 'rol' | 'status' | 'ai' | 'ai-generated' | 'error';
   value?: ObjetivoFisico | RolUsuario | boolean | string;
   label?: string;
 }
@@ -13,6 +13,18 @@ export const Badge: React.FC<BadgeProps> = ({ type, value, label }) => {
       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--accent-secondary)]/10 text-[var(--accent-secondary)] border border-[var(--accent-secondary)]/30 font-space tracking-tight">
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-secondary)]" />
         {label || 'Motor IA'}
+      </span>
+    );
+  }
+
+  if (type === 'ai-generated') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--accent-secondary)]/15 text-[var(--accent-secondary)] border border-[var(--accent-secondary)]/40 font-space tracking-tight">
+        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+          <path d="M18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" />
+        </svg>
+        {label || 'Generada por IA'}
       </span>
     );
   }

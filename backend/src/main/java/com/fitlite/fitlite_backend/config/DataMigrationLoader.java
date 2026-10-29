@@ -24,6 +24,7 @@ public class DataMigrationLoader implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("Iniciando verificación y migración de catálogo de ejercicios...");
+        asegurarCamposRutinas();
         sembrarEjerciciosBase();
         migrarDatosHistoricosSiExisten();
         log.info("Catálogo y migración listos.");
@@ -259,6 +260,15 @@ public class DataMigrationLoader implements CommandLineRunner {
             }
         } catch (Exception e) {
             log.warn("Nota sobre migración automática: {}", e.getMessage());
+        }
+    }
+
+    private void asegurarCamposRutinas() {
+        try {
+            jdbcTemplate.execute("UPDATE rutinas SET generada_por_ia = false WHERE generada_por_ia IS NULL");
+            jdbcTemplate.execute("UPDATE rutinas SET activa = true WHERE activa IS NULL");
+        } catch (Exception e) {
+            log.debug("Nota al verificar columnas de rutinas: {}", e.getMessage());
         }
     }
 }

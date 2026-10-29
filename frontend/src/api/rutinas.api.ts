@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Rutina, RutinaRequest } from '../types';
+import type { Rutina, RutinaRequest, RutinaIaBorradorRequest, RutinaIaBorradorResponse, RutinaIaGuardarRequest } from '../types';
 
 export const rutinasApi = {
   getById: async (id: number): Promise<Rutina> => {
@@ -36,5 +36,15 @@ export const rutinasApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/rutinas/${id}`);
+  },
+
+  generarBorradorIa: async (request: RutinaIaBorradorRequest): Promise<RutinaIaBorradorResponse> => {
+    const { data } = await apiClient.post<RutinaIaBorradorResponse>('/rutinas/ia/borrador', request);
+    return data;
+  },
+
+  guardarBorradorIa: async (request: RutinaIaGuardarRequest): Promise<Rutina> => {
+    const { data } = await apiClient.post<Rutina>('/rutinas/ia/guardar', request);
+    return data;
   },
 };

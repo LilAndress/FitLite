@@ -103,6 +103,7 @@ export interface Rutina {
   descripcion: string;
   fechaAsignacion: string;
   activa: boolean;
+  generadaPorIa: boolean;
   usuarioId: number;
   usuarioNombre: string;
 }
@@ -112,6 +113,44 @@ export interface RutinaRequest {
   descripcion?: string;
   activa?: boolean;
   usuarioId: number;
+}
+
+export interface RutinaIaBorradorRequest {
+  usuarioId: number;
+  diasPorSemana: number;
+  minutosPorSesion: number;
+  enfoque?: string;
+}
+
+export interface EjercicioBorrador {
+  nombre: string;
+  grupoMuscular: string;
+  seriesObjetivo: number;
+  repeticionesObjetivo: number;
+  pesoObjetivo: number | null;
+  nota: string;
+}
+
+export interface RutinaIaBorradorResponse {
+  nombre: string;
+  descripcion: string;
+  razonamiento: string;
+  ejercicios: EjercicioBorrador[];
+}
+
+export interface EjercicioGuardar {
+  nombre: string;
+  grupoMuscular: string;
+  seriesObjetivo: number;
+  repeticionesObjetivo: number;
+  pesoObjetivo: number | null;
+}
+
+export interface RutinaIaGuardarRequest {
+  usuarioId: number;
+  nombre: string;
+  descripcion?: string;
+  ejercicios: EjercicioGuardar[];
 }
 
 export type GrupoMuscular =

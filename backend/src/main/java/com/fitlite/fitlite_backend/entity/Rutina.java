@@ -28,7 +28,11 @@ public class Rutina {
     @Column(name = "fecha_asignacion")
     private LocalDateTime fechaAsignacion = LocalDateTime.now();
 
-    private boolean activa = true;
+    @Column(nullable = false)
+    private Boolean activa = true;
+
+    @Column(name = "generada_por_ia", nullable = false)
+    private Boolean generadaPorIa = false;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)
@@ -36,4 +40,12 @@ public class Rutina {
 
     @OneToMany(mappedBy = "rutina", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RutinaEjercicio> ejercicios = new ArrayList<>();
+
+    public boolean isGeneradaPorIa() {
+        return Boolean.TRUE.equals(generadaPorIa);
+    }
+
+    public boolean isActiva() {
+        return activa == null || activa;
+    }
 }
