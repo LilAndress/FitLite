@@ -26,6 +26,8 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final PesoCorporalRepository pesoCorporalRepository;
     private final PerfilSaludService perfilSaludService;
+    private final com.fitlite.fitlite_backend.repository.ProgresoRepository progresoRepository;
+    private final com.fitlite.fitlite_backend.repository.EjercicioCatalogoRepository ejercicioCatalogoRepository;
 
     @Transactional
     public UsuarioResponseDTO crearUsuario(UsuarioRequestDTO request) {
@@ -189,6 +191,53 @@ public class UsuarioService {
         return mapToResponse(guardado);
     }
 
+    @Transactional
+    public UsuarioResponseDTO completarOnboarding(Long userId, com.fitlite.fitlite_backend.dto.OnboardingRequestDTO request) {
+        Usuario usuario = buscarEntidadPorId(userId);
+        usuario.setOnboardingCompletado(true);
+
+        if (request != null) {
+            if (request.getSituacionInicial() != null && !request.getSituacionInicial().isBlank()) {
+                usuario.setSituacionInicial(request.getSituacionInicial());
+            }
+            if (request.getTiempoSinEntrenar() != null && !request.getTiempoSinEntrenar().isBlank()) {
+                usuario.setTiempoSinEntrenar(request.getTiempoSinEntrenar());
+            }
+            if (request.getTiempoTotalEntrenando() != null && !request.getTiempoTotalEntrenando().isBlank()) {
+                usuario.setTiempoTotalEntrenando(request.getTiempoTotalEntrenando());
+            }
+
+            if (request.getPesosDeclarados() != null) {
+                for (com.fitlite.fitlite_backend.dto.OnboardingRequestDTO.PesoDeclaradoDTO pesoDto : request.getPesosDeclarados()) {
+                    if (pesoDto.getPeso() != null && pesoDto.getPeso() > 0) {
+                        com.fitlite.fitlite_backend.entity.EjercicioCatalogo catalogo = null;
+                        if (pesoDto.getEjercicioCatalogoId() != null) {
+                            catalogo = ejercicioCatalogoRepository.findById(pesoDto.getEjercicioCatalogoId()).orElse(null);
+                        } else if (pesoDto.getEjercicioNombre() != null && !pesoDto.getEjercicioNombre().isBlank()) {
+                            catalogo = ejercicioCatalogoRepository.findByNombreIgnoreCase(pesoDto.getEjercicioNombre().trim()).orElse(null);
+                        }
+
+                        if (catalogo != null) {
+                            com.fitlite.fitlite_backend.entity.Progreso p = com.fitlite.fitlite_backend.entity.Progreso.builder()
+                                    .fecha(LocalDate.now())
+                                    .seriesRealizadas(3)
+                                    .repeticionesRealizadas(pesoDto.getRepeticiones() != null ? pesoDto.getRepeticiones() : 10)
+                                    .pesoRealizado(pesoDto.getPeso())
+                                    .usuario(usuario)
+                                    .ejercicioCatalogo(catalogo)
+                                    .origen(com.fitlite.fitlite_backend.enums.OrigenProgreso.DECLARADO)
+                                    .build();
+                            progresoRepository.save(p);
+                        }
+                    }
+                }
+            }
+        }
+
+        Usuario guardado = usuarioRepository.save(usuario);
+        return mapToResponse(guardado);
+    }
+
     public UsuarioResponseDTO mapToResponse(Usuario usuario) {
         return UsuarioResponseDTO.builder()
                 .id(usuario.getId())
@@ -204,6 +253,10 @@ public class UsuarioService {
                 .nivelExperiencia(usuario.getNivelExperiencia())
                 .fechaRegistro(usuario.getFechaRegistro())
                 .perfilSalud(usuario.getPerfilSalud() != null ? perfilSaludService.mapToResponse(usuario.getPerfilSalud()) : null)
+                .situacionInicial(usuario.getSituacionInicial())
+                .tiempoSinEntrenar(usuario.getTiempoSinEntrenar())
+                .tiempoTotalEntrenando(usuario.getTiempoTotalEntrenando())
+                .onboardingCompletado(usuario.isOnboardingCompletado())
                 .build();
     }
 }

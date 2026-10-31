@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,20 +51,35 @@ type IaStep = 'choose' | 'manual' | 'ia-form' | 'ia-loading' | 'ia-preview' | 'i
 export const RutinasPage: React.FC = () => {
   const { activeUser } = useUser();
   const queryClient = useQueryClient();
+  const location = useLocation();
 
   const [expandedRutinaId, setExpandedRutinaId] = useState<number | null>(null);
   const [isRutinaModalOpen, setIsRutinaModalOpen] = useState(false);
   const [iaStep, setIaStep] = useState<IaStep>('choose');
   const [selectedRutinaForEjercicio, setSelectedRutinaForEjercicio] = useState<Rutina | null>(null);
 
-  // IA state
-  const [iaFormData, setIaFormData] = useState({
-    diasPorSemana: 4,
-    minutosPorSesion: 60,
+  // IA state preloaded from activeUser perfilSalud
+  const getInitialIaFormData = useCallback(() => ({
+    diasPorSemana: activeUser?.perfilSalud?.diasDisponiblesSemana || 4,
+    minutosPorSesion: activeUser?.perfilSalud?.minutosPorSesion || 60,
     enfoque: '',
-  });
+  }), [activeUser?.perfilSalud?.diasDisponiblesSemana, activeUser?.perfilSalud?.minutosPorSesion]);
+
+  const [iaFormData, setIaFormData] = useState(getInitialIaFormData);
   const [iaBorrador, setIaBorrador] = useState<RutinaIaBorradorResponse | null>(null);
   const [iaError, setIaError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIaFormData(getInitialIaFormData());
+  }, [getInitialIaFormData]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('crear') === 'true') {
+      setIsRutinaModalOpen(true);
+      setIaStep('manual');
+    }
+  }, [location.search]);
 
   // Queries
   const { data: rutinas = [], isLoading } = useQuery({
@@ -215,7 +231,7 @@ export const RutinasPage: React.FC = () => {
     setIaBorrador(null);
     setIaError(null);
     resetRutinaForm();
-    setIaFormData({ diasPorSemana: 4, minutosPorSesion: 60, enfoque: '' });
+    setIaFormData(getInitialIaFormData());
   };
 
   const handleGenerarClick = () => {

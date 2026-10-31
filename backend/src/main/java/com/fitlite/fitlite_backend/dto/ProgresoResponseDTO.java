@@ -25,4 +25,5 @@ public class ProgresoResponseDTO {
     private Long ejercicioId; // Alias para compatibilidad hacia atrás
     private String ejercicioNombre;
     private GrupoMuscular grupoMuscular;
+    private com.fitlite.fitlite_backend.enums.OrigenProgreso origen;
 }

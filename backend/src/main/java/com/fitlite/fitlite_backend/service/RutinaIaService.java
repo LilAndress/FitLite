@@ -150,10 +150,33 @@ public class RutinaIaService {
         StringBuilder sb = new StringBuilder();
         sb.append("Genera una rutina de entrenamiento personalizada para ").append(usuario.getNombre()).append(".\n\n");
         sb.append("PARÁMETROS SOLICITADOS:\n");
-        sb.append("- Días de entrenamiento por semana: ").append(request.getDiasPorSemana()).append("\n");
-        sb.append("- Minutos por sesión: ").append(request.getMinutosPorSesion()).append("\n");
+        int dias = request.getDiasPorSemana() != null ? request.getDiasPorSemana() :
+                (usuario.getPerfilSalud() != null && usuario.getPerfilSalud().getDiasDisponiblesSemana() != null ? usuario.getPerfilSalud().getDiasDisponiblesSemana() : 4);
+        int minutos = request.getMinutosPorSesion() != null ? request.getMinutosPorSesion() :
+                (usuario.getPerfilSalud() != null && usuario.getPerfilSalud().getMinutosPorSesion() != null ? usuario.getPerfilSalud().getMinutosPorSesion() : 60);
+
+        sb.append("- Días de entrenamiento por semana: ").append(dias).append("\n");
+        sb.append("- Minutos por sesión: ").append(minutos).append("\n");
         if (request.getEnfoque() != null && !request.getEnfoque().isBlank()) {
             sb.append("- Enfoque específico: ").append(request.getEnfoque()).append("\n");
+        }
+
+        if (request.getSituacionInicial() != null && !request.getSituacionInicial().isBlank()) {
+            sb.append("- Situación inicial: ").append(request.getSituacionInicial()).append("\n");
+        }
+        if (request.getTiempoTotalEntrenando() != null && !request.getTiempoTotalEntrenando().isBlank()) {
+            sb.append("- Tiempo total entrenando previamente: ").append(request.getTiempoTotalEntrenando()).append("\n");
+        }
+        if (request.getTiempoSinEntrenar() != null && !request.getTiempoSinEntrenar().isBlank()) {
+            sb.append("- Tiempo de inactividad / sin entrenar: ").append(request.getTiempoSinEntrenar()).append("\n");
+        }
+        if (request.getPesosDeclarados() != null && !request.getPesosDeclarados().isEmpty()) {
+            sb.append("- Cargas y marcas de referencia declaradas por el atleta:\n");
+            for (var p : request.getPesosDeclarados()) {
+                if (p.getPeso() != null && p.getPeso() > 0) {
+                    sb.append("  • ").append(p.getEjercicioNombre() != null ? p.getEjercicioNombre() : "Ejercicio").append(": ").append(p.getPeso()).append(" kg\n");
+                }
+            }
         }
 
         sb.append("\nRESPONDE EXCLUSIVAMENTE con un JSON válido (sin markdown, sin ```json, solo el JSON puro) con esta estructura exacta:\n");

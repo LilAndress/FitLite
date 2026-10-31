@@ -49,7 +49,7 @@ public class AiContextBuilderService {
                     && !perfil.getZonasMolestia().contains("NINGUNA")) {
                 sb.append("- Zonas de dolor / molestias / lesiones previas: ")
                         .append(String.join(", ", perfil.getZonasMolestia()))
-                        .append("\n  -> REGLA OBLIGATORIA: Adapta o prohíbe ejercicios que ejerzan cizalla o estrés excesivo sobre estas articulaciones.\n");
+                        .append("\n  -> REGLA OBLIGATORIA: Adapta o prohíbe ejercicios que comprometan estas articulaciones o ejerzan cizalla o estrés excesivo sobre ellas.\n");
             } else {
                 sb.append("- Zonas de dolor: Ninguna reportada.\n");
             }

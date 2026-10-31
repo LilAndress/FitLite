@@ -24,9 +24,10 @@ public class DataMigrationLoader implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("Iniciando verificación y migración de catálogo de ejercicios...");
-        asegurarCamposRutinas();
+        asegurarCampos();
         sembrarEjerciciosBase();
         migrarDatosHistoricosSiExisten();
+        poblarArticulacionesCatalogo();
         log.info("Catálogo y migración listos.");
     }
 
@@ -263,12 +264,63 @@ public class DataMigrationLoader implements CommandLineRunner {
         }
     }
 
-    private void asegurarCamposRutinas() {
+    private void asegurarCampos() {
         try {
             jdbcTemplate.execute("UPDATE rutinas SET generada_por_ia = false WHERE generada_por_ia IS NULL");
             jdbcTemplate.execute("UPDATE rutinas SET activa = true WHERE activa IS NULL");
+            jdbcTemplate.execute("UPDATE usuarios SET onboarding_completado = true WHERE onboarding_completado IS NULL AND id IN (SELECT DISTINCT usuario_id FROM rutinas)");
+            jdbcTemplate.execute("UPDATE usuarios SET onboarding_completado = false WHERE onboarding_completado IS NULL");
+            jdbcTemplate.execute("UPDATE progresos SET origen = 'REGISTRADO' WHERE origen IS NULL");
         } catch (Exception e) {
-            log.debug("Nota al verificar columnas de rutinas: {}", e.getMessage());
+            log.debug("Nota al verificar columnas: {}", e.getMessage());
+        }
+    }
+
+    private void poblarArticulacionesCatalogo() {
+        try {
+            List<EjercicioCatalogo> catalogo = ejercicioCatalogoRepository.findAll();
+            for (EjercicioCatalogo ej : catalogo) {
+                if (ej.getArticulacionesComprometidas() == null || ej.getArticulacionesComprometidas().isEmpty()) {
+                    List<String> articulaciones = determinarArticulaciones(ej.getNombre(), ej.getGrupoMuscular());
+                    ej.setArticulacionesComprometidas(new java.util.ArrayList<>(articulaciones));
+                    ejercicioCatalogoRepository.save(ej);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Nota al poblar articulaciones en catálogo: {}", e.getMessage());
+        }
+    }
+
+    private List<String> determinarArticulaciones(String nombre, GrupoMuscular grupo) {
+        String n = nombre != null ? nombre.toLowerCase() : "";
+        if (grupo == null) return List.of();
+        switch (grupo) {
+            case PECHO:
+                return List.of("HOMBROS", "CODOS", "MUNECAS");
+            case ESPALDA:
+                if (n.contains("peso muerto") || n.contains("lumbares") || n.contains("remo")) {
+                    return List.of("LUMBARES", "HOMBROS", "CODOS");
+                }
+                return List.of("HOMBROS", "CODOS");
+            case HOMBROS:
+                return List.of("HOMBROS", "CUELLO", "CODOS");
+            case BICEPS:
+                return List.of("CODOS", "MUNECAS");
+            case TRICEPS:
+                return List.of("CODOS", "MUNECAS", "HOMBROS");
+            case PIERNAS:
+                if (n.contains("sentadilla") || n.contains("prensa")) {
+                    return List.of("RODILLAS", "LUMBARES", "TOBILLOS");
+                }
+                return List.of("RODILLAS", "TOBILLOS");
+            case GLUTEOS:
+                return List.of("RODILLAS", "LUMBARES");
+            case CORE:
+                return List.of("LUMBARES", "CUELLO");
+            case CARDIO:
+                return List.of("RODILLAS", "TOBILLOS");
+            default:
+                return List.of();
         }
     }
 }

@@ -32,4 +32,5 @@ public class ProgresoRequestDTO {
     // Puede recibirse como ejercicioCatalogoId o como ejercicioId (para compatibilidad total)
     private Long ejercicioCatalogoId;
     private Long ejercicioId;
+    private com.fitlite.fitlite_backend.enums.OrigenProgreso origen;
 }

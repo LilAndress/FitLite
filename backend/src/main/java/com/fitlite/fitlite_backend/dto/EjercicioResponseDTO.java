@@ -22,4 +22,5 @@ public class EjercicioResponseDTO {
     private Double pesoObjetivo;
     private Long rutinaId;
     private String rutinaNombre;
+    private java.util.List<String> articulacionesComprometidas;
 }

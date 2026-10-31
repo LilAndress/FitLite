@@ -53,6 +53,7 @@ public class ProgresoService {
                 .pesoRealizado(request.getPesoRealizado())
                 .usuario(usuario)
                 .ejercicioCatalogo(catalogo)
+                .origen(request.getOrigen() != null ? request.getOrigen() : com.fitlite.fitlite_backend.enums.OrigenProgreso.REGISTRADO)
                 .build();
 
         Progreso guardado = progresoRepository.save(progreso);
@@ -119,6 +120,7 @@ public class ProgresoService {
                 .ejercicioId(progreso.getEjercicioCatalogo() != null ? progreso.getEjercicioCatalogo().getId() : null)
                 .ejercicioNombre(progreso.getEjercicioCatalogo() != null ? progreso.getEjercicioCatalogo().getNombre() : "Ejercicio eliminado")
                 .grupoMuscular(progreso.getEjercicioCatalogo() != null ? progreso.getEjercicioCatalogo().getGrupoMuscular() : null)
+                .origen(progreso.getOrigen() != null ? progreso.getOrigen() : com.fitlite.fitlite_backend.enums.OrigenProgreso.REGISTRADO)
                 .build();
     }
 }

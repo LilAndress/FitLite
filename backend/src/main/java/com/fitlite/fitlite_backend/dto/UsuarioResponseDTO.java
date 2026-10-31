@@ -29,4 +29,8 @@ public class UsuarioResponseDTO {
     private Boolean activo;
     private LocalDateTime ultimoAcceso;
     private PerfilSaludResponseDTO perfilSalud;
+    private String situacionInicial;
+    private String tiempoSinEntrenar;
+    private String tiempoTotalEntrenando;
+    private Boolean onboardingCompletado;
 }

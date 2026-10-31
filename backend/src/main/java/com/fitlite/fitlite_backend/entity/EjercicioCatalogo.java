@@ -37,4 +37,10 @@ public class EjercicioCatalogo {
     @Column(name = "fecha_creacion")
     @Builder.Default
     private LocalDateTime fechaCreacion = LocalDateTime.now();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "catalogo_articulaciones_comprometidas", joinColumns = @JoinColumn(name = "catalogo_id"))
+    @Column(name = "articulacion")
+    @Builder.Default
+    private java.util.List<String> articulacionesComprometidas = new java.util.ArrayList<>();
 }

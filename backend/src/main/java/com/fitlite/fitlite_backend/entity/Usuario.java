@@ -59,6 +59,18 @@ public class Usuario {
     @Column(name = "ultimo_acceso")
     private LocalDateTime ultimoAcceso;
 
+    @Column(name = "situacion_inicial")
+    private String situacionInicial;
+
+    @Column(name = "tiempo_sin_entrenar")
+    private String tiempoSinEntrenar;
+
+    @Column(name = "tiempo_total_entrenando")
+    private String tiempoTotalEntrenando;
+
+    @Column(name = "onboarding_completado", nullable = false, columnDefinition = "boolean default false")
+    private Boolean onboardingCompletado = false;
+
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     private List<Rutina> rutinas = new ArrayList<>();
 
@@ -70,5 +82,9 @@ public class Usuario {
 
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MensajeChat> mensajesChat = new ArrayList<>();
+
+    public boolean isOnboardingCompletado() {
+        return Boolean.TRUE.equals(onboardingCompletado);
+    }
 }
 

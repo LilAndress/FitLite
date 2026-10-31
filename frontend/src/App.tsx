@@ -11,6 +11,8 @@ import { AuthPage } from './pages/AuthPage';
 import { CoachIaPage } from './pages/CoachIaPage';
 import { CoachIaFloatingWidget } from './components/CoachIaFloatingWidget';
 
+import { BienvenidaPage } from './pages/BienvenidaPage';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -25,9 +27,20 @@ function AppContent() {
   const location = useLocation();
   const { activeUser } = useUser();
 
-  const isAuthRoute = location.pathname === '/login' || location.pathname === '/registro';
+  const isAuthRoute = location.pathname === '/login' || location.pathname === '/registro' || location.pathname === '/bienvenida';
   const isLandingRoute = location.pathname === '/landing' || (location.pathname === '/' && !activeUser);
   const hideAppNavbar = isAuthRoute || isLandingRoute;
+
+  // Protected route guard: requires activeUser and checks onboarding completion
+  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+    if (!activeUser) {
+      return <Navigate to="/login" replace />;
+    }
+    if (activeUser.onboardingCompletado === false) {
+      return <Navigate to="/bienvenida" replace />;
+    }
+    return <>{children}</>;
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col font-inter">
@@ -35,19 +48,42 @@ function AppContent() {
       <main className="flex-1 flex flex-col">
         <Routes>
           {/* Landing pública en '/' para visitantes sin sesión */}
-          <Route path="/" element={activeUser ? <DashboardPage /> : <LandingPage />} />
+          <Route 
+            path="/" 
+            element={
+              !activeUser ? (
+                <LandingPage />
+              ) : activeUser.onboardingCompletado === false ? (
+                <Navigate to="/bienvenida" replace />
+              ) : (
+                <DashboardPage />
+              )
+            } 
+          />
           <Route path="/landing" element={<LandingPage />} />
-          <Route path="/dashboard" element={activeUser ? <DashboardPage /> : <Navigate to="/login" replace />} />
+          <Route 
+            path="/bienvenida" 
+            element={
+              !activeUser ? (
+                <Navigate to="/login" replace />
+              ) : activeUser.onboardingCompletado !== false ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <BienvenidaPage />
+              )
+            } 
+          />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/login" element={<AuthPage />} />
           <Route path="/registro" element={<AuthPage />} />
-          <Route path="/rutinas" element={activeUser ? <RutinasPage /> : <Navigate to="/login" replace />} />
-          <Route path="/progreso" element={activeUser ? <ProgresoPage /> : <Navigate to="/login" replace />} />
-          <Route path="/coach" element={activeUser ? <CoachIaPage /> : <Navigate to="/login" replace />} />
-          <Route path="/usuarios" element={activeUser ? <UsuariosPage /> : <Navigate to="/login" replace />} />
+          <Route path="/rutinas" element={<ProtectedRoute><RutinasPage /></ProtectedRoute>} />
+          <Route path="/progreso" element={<ProtectedRoute><ProgresoPage /></ProtectedRoute>} />
+          <Route path="/coach" element={<ProtectedRoute><CoachIaPage /></ProtectedRoute>} />
+          <Route path="/usuarios" element={<ProtectedRoute><UsuariosPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <CoachIaFloatingWidget />
+      {!isAuthRoute && <CoachIaFloatingWidget />}
       {!hideAppNavbar && (
         <footer className="border-t border-[var(--border)] bg-[var(--surface)] py-5 text-center text-xs text-[var(--text-secondary)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">

@@ -43,6 +43,10 @@ export interface Usuario {
   ultimoAcceso?: string | null;
   fechaRegistro: string;
   perfilSalud?: PerfilSalud | null;
+  onboardingCompletado?: boolean;
+  situacionInicial?: string | null;
+  tiempoSinEntrenar?: string | null;
+  tiempoTotalEntrenando?: string | null;
 }
 
 export interface UsuarioRequest {
@@ -115,11 +119,30 @@ export interface RutinaRequest {
   usuarioId: number;
 }
 
+export interface PesoDeclarado {
+  ejercicioCatalogoId?: number;
+  ejercicioNombre?: string;
+  peso: number;
+  repeticiones?: number;
+}
+
+export interface OnboardingRequest {
+  usuarioId?: number;
+  situacionInicial?: string;
+  tiempoTotalEntrenando?: string;
+  tiempoSinEntrenar?: string;
+  pesosDeclarados?: PesoDeclarado[];
+}
+
 export interface RutinaIaBorradorRequest {
   usuarioId: number;
-  diasPorSemana: number;
-  minutosPorSesion: number;
+  diasPorSemana?: number;
+  minutosPorSesion?: number;
   enfoque?: string;
+  situacionInicial?: string;
+  tiempoTotalEntrenando?: string;
+  tiempoSinEntrenar?: string;
+  pesosDeclarados?: PesoDeclarado[];
 }
 
 export interface EjercicioBorrador {
@@ -171,6 +194,7 @@ export interface EjercicioCatalogo {
   descripcionTecnica?: string;
   creadoPorUsuario?: number | null;
   fechaCreacion?: string;
+  articulacionesComprometidas?: string[];
 }
 
 export interface Ejercicio {
@@ -184,6 +208,7 @@ export interface Ejercicio {
   pesoObjetivo?: number;
   rutinaId: number;
   rutinaNombre: string;
+  articulacionesComprometidas?: string[];
 }
 
 export interface EjercicioRequest {
@@ -209,6 +234,7 @@ export interface Progreso {
   ejercicioId: number;
   ejercicioNombre: string;
   grupoMuscular?: GrupoMuscular;
+  origen?: 'REGISTRADO' | 'DECLARADO';
 }
 
 export interface ProgresoRequest {
@@ -219,6 +245,7 @@ export interface ProgresoRequest {
   usuarioId: number;
   ejercicioId?: number;
   ejercicioCatalogoId?: number;
+  origen?: 'REGISTRADO' | 'DECLARADO';
 }
 
 export interface MensajeChat {

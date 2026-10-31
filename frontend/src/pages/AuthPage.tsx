@@ -183,7 +183,7 @@ export const AuthPage: React.FC = () => {
     onSuccess: async (newUser) => {
       setActiveUser(newUser);
       await refreshUsers();
-      navigate('/dashboard');
+      navigate(newUser.onboardingCompletado ? '/dashboard' : '/bienvenida');
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || err.message || 'Error al crear la cuenta. Verifica que el correo no esté duplicado.';
@@ -779,12 +779,6 @@ export const AuthPage: React.FC = () => {
                   className="space-y-4 animate-fadeIn"
                 >
                   <div className="mb-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-inter flex items-center gap-1">
-                        <HeartPulse className="w-3 h-3" />
-                        Seguridad Médica & Motor IA
-                      </span>
-                    </div>
                     <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] font-space tracking-tight">
                       Salud, Lesiones y Entorno
                     </h2>
@@ -1010,7 +1004,7 @@ export const AuthPage: React.FC = () => {
                   <div className="p-3 rounded-xl bg-[var(--accent-primary)]/5 border border-[var(--accent-primary)]/20 text-xs font-inter flex items-start gap-2.5 text-[var(--text-secondary)]">
                     <Sparkles className="w-4 h-4 text-[var(--accent-primary)] shrink-0 mt-0.5" />
                     <p className="text-[11px] leading-relaxed">
-                      El modelo de IA usará estos filtros de forma estricta para excluir ejercicios lesivos y modular la intensidad según tu capacidad real.
+                      La IA intentará evitar ejercicios que afecten estas zonas. FitLite no da consejo médico: si tienes una condición, consulta a un profesional antes de entrenar.
                     </p>
                   </div>
 

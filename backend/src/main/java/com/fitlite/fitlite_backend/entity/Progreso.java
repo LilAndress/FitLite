@@ -39,4 +39,9 @@ public class Progreso {
     @ManyToOne
     @JoinColumn(name = "ejercicio_catalogo_id")
     private EjercicioCatalogo ejercicioCatalogo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origen", nullable = false, columnDefinition = "varchar(20) default 'REGISTRADO'")
+    @Builder.Default
+    private com.fitlite.fitlite_backend.enums.OrigenProgreso origen = com.fitlite.fitlite_backend.enums.OrigenProgreso.REGISTRADO;
 }

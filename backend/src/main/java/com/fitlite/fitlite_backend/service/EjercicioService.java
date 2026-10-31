@@ -167,6 +167,7 @@ public class EjercicioService {
                 .pesoObjetivo(ejercicio.getPesoObjetivo())
                 .rutinaId(ejercicio.getRutina().getId())
                 .rutinaNombre(ejercicio.getRutina().getNombre())
+                .articulacionesComprometidas(ejercicio.getEjercicioCatalogo() != null ? ejercicio.getEjercicioCatalogo().getArticulacionesComprometidas() : java.util.List.of())
                 .build();
     }
 }

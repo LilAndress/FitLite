@@ -23,7 +23,8 @@ import {
   Check,
   Sparkles,
   AlertCircle,
-  Bot
+  Bot,
+  ChevronRight
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useUser } from '../context/UserContext';
@@ -230,8 +231,12 @@ export const DashboardPage: React.FC = () => {
   const rutinasActivas = rutinas.filter((r) => r.activa);
   const ultimoProgreso = progresos.length > 0 ? progresos[0] : null;
 
-  // Exercise Chart data in chronological order
-  const chartData = [...progresos].reverse().slice(-10).map((p) => ({
+  // Distinguir progresos registrados de declarados (para adherencia y gráficos)
+  const progresosRegistrados = progresos.filter((p) => p.origen !== 'DECLARADO');
+  const tieneSesionesRegistradas = progresosRegistrados.length > 0;
+
+  // Exercise Chart data in chronological order (solo sesiones realmente registradas)
+  const chartData = [...progresosRegistrados].reverse().slice(-10).map((p) => ({
     fecha: p.fecha.slice(5),
     peso: p.pesoRealizado || 0,
     reps: p.repeticionesRealizadas,
@@ -245,8 +250,8 @@ export const DashboardPage: React.FC = () => {
     notas: p.notas || '',
   }));
 
-  const maxPeso = progresos.length > 0 ? Math.max(...progresos.map((p) => p.pesoRealizado || 0)) : 0;
-  const totalSeries = progresos.reduce((acc, p) => acc + p.seriesRealizadas, 0);
+  const maxPeso = progresosRegistrados.length > 0 ? Math.max(...progresosRegistrados.map((p) => p.pesoRealizado || 0)) : 0;
+  const totalSeries = progresosRegistrados.reduce((acc, p) => acc + p.seriesRealizadas, 0);
 
   // Body weight calculations
   const pesoActual = activeUser?.pesoActual ?? (historialPesos.length > 0 ? historialPesos[0].peso : null);
@@ -254,8 +259,14 @@ export const DashboardPage: React.FC = () => {
   const pesoDiff = pesoActual !== null && pesoPrevio !== null ? Number((pesoActual - pesoPrevio).toFixed(1)) : null;
   const ultimoPesaje = historialPesos.length > 0 ? historialPesos[0] : null;
 
-  // Calculation for adherence percentage
-  const adherencia = progresos.length > 0 ? Math.min(Math.round((progresos.length / 4) * 100), 100) : 85;
+  // Calculation for adherence percentage (los declarados no cuentan para adherencia)
+  const adherencia = tieneSesionesRegistradas ? Math.min(Math.round((progresosRegistrados.length / 4) * 100), 100) : 0;
+
+  // Checklist de primeros pasos para el atleta
+  const pasoRutina = rutinas.length > 0;
+  const pasoSesion = tieneSesionesRegistradas;
+  const pasoPeso = historialPesos.length > 0 || (activeUser?.pesoActual != null && activeUser.pesoActual > 0);
+  const pasosCompletados = (pasoRutina ? 1 : 0) + (pasoSesion ? 1 : 0) + (pasoPeso ? 1 : 0);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -519,160 +530,337 @@ export const DashboardPage: React.FC = () => {
 
       {/* Gráfica de Progreso y Listado de Rutinas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gráfica Analítica con Selector de Modo (2 cols) */}
-        <div className="lg:col-span-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-[var(--border)]">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-[var(--text-primary)] font-space tracking-tight">
-                  {graficaTab === 'ejercicios'
-                    ? 'Historial de sobrecarga progresiva (kg)'
-                    : 'Evolución de peso corporal (kg)'}
+        {/* Gráfica Analítica o Tarjeta Primeros Pasos (2 cols) */}
+        {!tieneSesionesRegistradas ? (
+          <div className="lg:col-span-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 relative overflow-hidden animate-fadeIn">
+            {/* Ambient glow */}
+            <div className="absolute top-0 right-0 w-72 h-72 bg-[var(--accent-primary)]/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[var(--border)]">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 font-space tracking-tight flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3" />
+                    Guía de inicio
+                  </span>
+                  <span className="text-[11px] font-space text-[var(--text-secondary)] font-medium">
+                    {pasosCompletados} de 3 completados
+                  </span>
+                </div>
+                <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)] font-space tracking-tight">
+                  Primeros pasos
                 </h2>
+                <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
+                  Completa estas 3 acciones para desbloquear las gráficas analíticas de sobrecarga y volumen.
+                </p>
               </div>
-              <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
-                {graficaTab === 'ejercicios'
-                  ? 'Trazo de cargas progresivas registradas en ejercicios'
-                  : 'Seguimiento cronológico del peso corporal del atleta'}
-              </p>
+
+              {/* Progress bar */}
+              <div className="w-full sm:w-44 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full h-2.5 overflow-hidden p-0.5">
+                <div
+                  className="bg-[var(--accent-primary)] h-full rounded-full transition-all duration-500 ease-out shadow-sm"
+                  style={{ width: `${(pasosCompletados / 3) * 100}%` }}
+                />
+              </div>
             </div>
 
-            {/* Selector de modo y enlaces */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center p-0.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full text-xs font-inter">
-                <button
-                  onClick={() => setGraficaTab('ejercicios')}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    graficaTab === 'ejercicios'
-                      ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  Cargas
-                </button>
-                <button
-                  onClick={() => setGraficaTab('peso')}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    graficaTab === 'peso'
-                      ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  Peso corporal
-                </button>
+            {/* Checklist items */}
+            <div className="space-y-3">
+              {/* Item 1: Guardar tu primera rutina */}
+              <div
+                className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  pasoRutina
+                    ? 'bg-emerald-500/5 border-emerald-500/30'
+                    : 'bg-[var(--bg-primary)] border-[var(--border)]'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                      pasoRutina
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                        : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)]'
+                    }`}
+                  >
+                    {pasoRutina ? <Check className="w-4 h-4 stroke-[2.5]" /> : <Calendar className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <h3 className={`text-xs font-bold font-space ${pasoRutina ? 'text-emerald-300 line-through opacity-85' : 'text-[var(--text-primary)]'}`}>
+                      Guardar tu primera rutina
+                    </h3>
+                    <p className="text-[11px] text-[var(--text-secondary)] font-inter mt-0.5 leading-relaxed">
+                      Crea tu plan de entrenamiento manual o genéralo a tu medida con la IA según tu perfil.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="self-end sm:self-auto shrink-0">
+                  {pasoRutina ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-space">
+                      <Check className="w-3 h-3 stroke-[2.5]" />
+                      Completado
+                    </span>
+                  ) : (
+                    <Link
+                      to="/rutinas"
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold font-space hover:brightness-105 active:scale-95 transition-all shadow-sm"
+                    >
+                      <span>Ir a rutinas</span>
+                      <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </Link>
+                  )}
+                </div>
               </div>
 
-              <Link
-                to="/progreso"
-                className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] hover:opacity-80 transition-opacity font-medium font-inter ml-1"
+              {/* Item 2: Registrar tu primera sesión */}
+              <div
+                className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  pasoSesion
+                    ? 'bg-emerald-500/5 border-emerald-500/30'
+                    : 'bg-[var(--bg-primary)] border-[var(--border)]'
+                }`}
               >
-                <span>Detalles</span>
-                <span>→</span>
-              </Link>
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                      pasoSesion
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                        : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)]'
+                    }`}
+                  >
+                    {pasoSesion ? <Check className="w-4 h-4 stroke-[2.5]" /> : <Dumbbell className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <h3 className={`text-xs font-bold font-space ${pasoSesion ? 'text-emerald-300 line-through opacity-85' : 'text-[var(--text-primary)]'}`}>
+                      Registrar tu primera sesión
+                    </h3>
+                    <p className="text-[11px] text-[var(--text-secondary)] font-inter mt-0.5 leading-relaxed">
+                      Anota las series, repeticiones y kilajes realizados en tu primer entrenamiento.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="self-end sm:self-auto shrink-0">
+                  {pasoSesion ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-space">
+                      <Check className="w-3 h-3 stroke-[2.5]" />
+                      Completado
+                    </span>
+                  ) : (
+                    <Link
+                      to="/progreso"
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[var(--accent-secondary)] text-[#0D1117] text-xs font-semibold font-space hover:brightness-105 active:scale-95 transition-all shadow-sm"
+                    >
+                      <span>Registrar entreno</span>
+                      <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {/* Item 3: Registrar tu peso */}
+              <div
+                className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  pasoPeso
+                    ? 'bg-emerald-500/5 border-emerald-500/30'
+                    : 'bg-[var(--bg-primary)] border-[var(--border)]'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                      pasoPeso
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                        : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)]'
+                    }`}
+                  >
+                    {pasoPeso ? <Check className="w-4 h-4 stroke-[2.5]" /> : <Scale className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <h3 className={`text-xs font-bold font-space ${pasoPeso ? 'text-emerald-300 line-through opacity-85' : 'text-[var(--text-primary)]'}`}>
+                      Registrar tu peso
+                    </h3>
+                    <p className="text-[11px] text-[var(--text-secondary)] font-inter mt-0.5 leading-relaxed">
+                      Lleva control de tu masa corporal para correlacionarla con tu rendimiento y sobrecarga.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="self-end sm:self-auto shrink-0">
+                  {pasoPeso ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-space">
+                      <Check className="w-3 h-3 stroke-[2.5]" />
+                      Completado
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={abrirModalPeso}
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent-primary)] text-xs font-semibold font-space active:scale-95 transition-all cursor-pointer shadow-sm"
+                    >
+                      <span>Añadir peso</span>
+                      <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
+        ) : (
+          <div className="lg:col-span-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-[var(--border)]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-[var(--text-primary)] font-space tracking-tight">
+                    {graficaTab === 'ejercicios'
+                      ? 'Historial de sobrecarga progresiva (kg)'
+                      : 'Evolución de peso corporal (kg)'}
+                  </h2>
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
+                  {graficaTab === 'ejercicios'
+                    ? 'Trazo de cargas progresivas registradas en ejercicios'
+                    : 'Seguimiento cronológico del peso corporal del atleta'}
+                </p>
+              </div>
 
-          {graficaTab === 'ejercicios' ? (
-            chartData.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/50">
-                <Dumbbell className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
-                <p className="text-xs font-inter">Aún no hay registros de carga para trazar la curva.</p>
-                <Link to="/progreso" className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] mt-2 font-semibold font-inter">
-                  <span>Registrar primera carga</span>
+              {/* Selector de modo y enlaces */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center p-0.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full text-xs font-inter">
+                  <button
+                    onClick={() => setGraficaTab('ejercicios')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      graficaTab === 'ejercicios'
+                        ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    Cargas
+                  </button>
+                  <button
+                    onClick={() => setGraficaTab('peso')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      graficaTab === 'peso'
+                        ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    Peso corporal
+                  </button>
+                </div>
+
+                <Link
+                  to="/progreso"
+                  className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] hover:opacity-80 transition-opacity font-medium font-inter ml-1"
+                >
+                  <span>Detalles</span>
                   <span>→</span>
                 </Link>
               </div>
+            </div>
+
+            {graficaTab === 'ejercicios' ? (
+              chartData.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/50">
+                  <Dumbbell className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
+                  <p className="text-xs font-inter">Aún no hay registros de carga para trazar la curva.</p>
+                  <Link to="/progreso" className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] mt-2 font-semibold font-inter">
+                    <span>Registrar primera carga</span>
+                    <span>→</span>
+                  </Link>
+                </div>
+              ) : (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="cyberGreen" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#B7FF3B" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#B7FF3B" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
+                      <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#A0A7B2" fontSize={10} tickLine={false} unit="kg" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1A1F26',
+                          borderColor: '#2E343B',
+                          borderRadius: '12px',
+                          color: '#F5F7FA',
+                          fontSize: '11px',
+                          boxShadow: 'none',
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="peso"
+                        name="Peso de ejercicio"
+                        stroke="#B7FF3B"
+                        strokeWidth={3}
+                        isAnimationActive={true}
+                        animationDuration={1100}
+                        fillOpacity={1}
+                        fill="url(#cyberGreen)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )
             ) : (
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="cyberGreen" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#B7FF3B" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#B7FF3B" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
-                    <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#A0A7B2" fontSize={10} tickLine={false} unit="kg" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#1A1F26',
-                        borderColor: '#2E343B',
-                        borderRadius: '12px',
-                        color: '#F5F7FA',
-                        fontSize: '11px',
-                        boxShadow: 'none',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="peso"
-                      name="Peso de ejercicio"
-                      stroke="#B7FF3B"
-                      strokeWidth={3}
-                      isAnimationActive={true}
-                      animationDuration={1100}
-                      fillOpacity={1}
-                      fill="url(#cyberGreen)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )
-          ) : (
-            chartPesoData.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/50">
-                <Scale className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
-                <p className="text-xs font-inter">Aún no hay registros en la tabla de seguimiento de peso corporal.</p>
-                <button
-                  onClick={abrirModalPeso}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold font-inter hover:brightness-105 active:scale-95 transition-all"
-                >
-                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-                  Registrar primer pesaje
-                </button>
-              </div>
-            ) : (
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartPesoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="bodyWeightGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
-                    <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#A0A7B2" fontSize={10} tickLine={false} unit="kg" domain={['dataMin - 2', 'dataMax + 2']} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#1A1F26',
-                        borderColor: '#2E343B',
-                        borderRadius: '12px',
-                        color: '#F5F7FA',
-                        fontSize: '11px',
-                        boxShadow: 'none',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="peso"
-                      name="Peso corporal"
-                      stroke="#38bdf8"
-                      strokeWidth={3}
-                      isAnimationActive={true}
-                      animationDuration={1100}
-                      fillOpacity={1}
-                      fill="url(#bodyWeightGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )
-          )}
-        </div>
+              chartPesoData.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/50">
+                  <Scale className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
+                  <p className="text-xs font-inter">Aún no hay registros en la tabla de seguimiento de peso corporal.</p>
+                  <button
+                    onClick={abrirModalPeso}
+                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold font-inter hover:brightness-105 active:scale-95 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                    Registrar primer pesaje
+                  </button>
+                </div>
+              ) : (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartPesoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="bodyWeightGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
+                      <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#A0A7B2" fontSize={10} tickLine={false} unit="kg" domain={['dataMin - 2', 'dataMax + 2']} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1A1F26',
+                          borderColor: '#2E343B',
+                          borderRadius: '12px',
+                          color: '#F5F7FA',
+                          fontSize: '11px',
+                          boxShadow: 'none',
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="peso"
+                        name="Peso corporal"
+                        stroke="#38bdf8"
+                        strokeWidth={3}
+                        isAnimationActive={true}
+                        animationDuration={1100}
+                        fillOpacity={1}
+                        fill="url(#bodyWeightGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )
+            )}
+          </div>
+        )}
 
         {/* Rutinas Asignadas (1 col) */}
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col justify-between">

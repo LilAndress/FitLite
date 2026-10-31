@@ -20,4 +20,5 @@ public class EjercicioCatalogoResponseDTO {
     private String descripcionTecnica;
     private Long creadoPorUsuario;
     private LocalDateTime fechaCreacion;
+    private java.util.List<String> articulacionesComprometidas;
 }

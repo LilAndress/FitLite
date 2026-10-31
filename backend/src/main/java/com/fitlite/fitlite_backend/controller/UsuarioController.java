@@ -80,6 +80,18 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarioService.actualizarPesoActual(id, request));
     }
 
+    @PostMapping("/me/onboarding")
+    public ResponseEntity<UsuarioResponseDTO> completarOnboarding(
+            @RequestHeader(value = "X-User-Id", required = false) Long userIdHeader,
+            @RequestBody(required = false) com.fitlite.fitlite_backend.dto.OnboardingRequestDTO request) {
+        Long userId = (request != null && request.getUsuarioId() != null) ? request.getUsuarioId() : userIdHeader;
+        if (userId == null) {
+            throw new IllegalArgumentException("Debe proporcionar la identidad del usuario para completar el onboarding.");
+        }
+        UsuarioResponseDTO response = usuarioService.completarOnboarding(userId, request);
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarUsuario(
             @PathVariable Long id,

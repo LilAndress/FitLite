@@ -76,4 +76,9 @@ export const usuariosApi = {
     const { data } = await apiClient.put<PerfilSalud>(`/usuarios/${usuarioId}/perfil-salud`, perfil);
     return data;
   },
+
+  completarOnboarding: async (request?: import('../types').OnboardingRequest): Promise<Usuario> => {
+    const { data } = await apiClient.post<Usuario>('/usuarios/me/onboarding', request || {});
+    return data;
+  },
 };
