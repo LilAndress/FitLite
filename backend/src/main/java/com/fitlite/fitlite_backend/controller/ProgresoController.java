@@ -25,6 +25,13 @@ public class ProgresoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ProgresoResponseDTO> actualizarProgreso(@PathVariable Long id,
+                                                                 @Valid @RequestBody ProgresoRequestDTO request) {
+        ProgresoResponseDTO response = progresoService.actualizarProgreso(id, request);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ProgresoResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(progresoService.obtenerPorId(id));

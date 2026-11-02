@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,7 +18,8 @@ import {
   Award,
   Scale,
   Calendar,
-  FileText
+  FileText,
+  Pencil
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -36,7 +38,7 @@ import { progresosApi } from '../api/progresos.api';
 import { pesosCorporalesApi } from '../api/pesos.api';
 import { rutinasApi } from '../api/rutinas.api';
 import { ejerciciosApi } from '../api/ejercicios.api';
-import type { Ejercicio } from '../types';
+import type { Ejercicio, Progreso, PesoCorporal } from '../types';
 import { Modal } from '../components/Modal';
 import { StatCard } from '../components/StatCard';
 
@@ -62,10 +64,30 @@ const getTodayStr = () => new Date().toISOString().split('T')[0];
 export const ProgresoPage: React.FC = () => {
   const { activeUser, refreshUsers } = useUser();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
 
-  const [activeTab, setActiveTab] = useState<'cargas' | 'pesoCorporal'>('cargas');
+  const [activeTab, setActiveTabState] = useState<'cargas' | 'pesoCorporal'>(
+    tabParam === 'pesoCorporal' ? 'pesoCorporal' : 'cargas'
+  );
+
+  const setActiveTab = (tab: 'cargas' | 'pesoCorporal') => {
+    setActiveTabState(tab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === 'pesoCorporal') {
+        next.set('tab', 'pesoCorporal');
+      } else {
+        next.delete('tab');
+      }
+      return next;
+    }, { replace: true });
+  };
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProgresoId, setEditingProgresoId] = useState<number | null>(null);
   const [isPesoModalOpen, setIsPesoModalOpen] = useState(false);
+  const [editingPesoId, setEditingPesoId] = useState<number | null>(null);
   const [filtroEjercicioId, setFiltroEjercicioId] = useState<string>('all');
   const [progresoError, setProgresoError] = useState<string | null>(null);
   const [pesoError, setPesoError] = useState<string | null>(null);
@@ -124,6 +146,7 @@ export const ProgresoPage: React.FC = () => {
     register: registerProgreso,
     handleSubmit: handleSubmitProgreso,
     reset: resetProgreso,
+    watch: watchProgreso,
     formState: { errors: errorsProgreso },
   } = useForm<ProgresoFormValues>({
     resolver: zodResolver(progresoSchema),
@@ -135,10 +158,25 @@ export const ProgresoPage: React.FC = () => {
     },
   });
 
+  const watchedFecha = watchProgreso('fecha');
+  const watchedEjercicioId = watchProgreso('ejercicioId');
+
+  const yaRegistrado = Boolean(
+    watchedFecha &&
+    watchedEjercicioId &&
+    progresos.some((p) => {
+      if (editingProgresoId && p.id === editingProgresoId) return false;
+      const sameFecha = p.fecha === watchedFecha;
+      const sameEjercicio = String(p.ejercicioCatalogoId || p.ejercicioId) === String(watchedEjercicioId);
+      return sameFecha && sameEjercicio;
+    })
+  );
+
   const {
     register: registerPeso,
     handleSubmit: handleSubmitPeso,
     reset: resetPeso,
+    watch: watchPeso,
     formState: { errors: errorsPeso },
   } = useForm<PesoCorporalFormValues>({
     resolver: zodResolver(pesoCorporalSchema),
@@ -148,6 +186,46 @@ export const ProgresoPage: React.FC = () => {
       notas: '',
     },
   });
+
+  const watchedPesoFecha = watchPeso('fecha');
+
+  const pesoYaRegistrado = Boolean(
+    watchedPesoFecha &&
+    historialPesos.some((p) => {
+      if (editingPesoId && p.id === editingPesoId) return false;
+      return p.fecha === watchedPesoFecha;
+    })
+  );
+
+  useEffect(() => {
+    if (tabParam === 'pesoCorporal') {
+      setActiveTabState('pesoCorporal');
+    } else if (tabParam === 'cargas') {
+      setActiveTabState('cargas');
+    }
+  }, [tabParam]);
+
+  useEffect(() => {
+    const autoOpen = searchParams.get('registrar') === 'true';
+    const ejId = searchParams.get('ejercicioId');
+    const pesoParam = searchParams.get('peso');
+    const repsParam = searchParams.get('reps');
+    const seriesParam = searchParams.get('series');
+
+    if (autoOpen || ejId) {
+      setEditingProgresoId(null);
+      setIsModalOpen(true);
+      if (ejId) {
+        resetProgreso({
+          fecha: getTodayStr(),
+          ejercicioId: Number(ejId),
+          seriesRealizadas: seriesParam ? Number(seriesParam) : 4,
+          repeticionesRealizadas: repsParam ? Number(repsParam) : 10,
+          pesoRealizado: pesoParam ? Number(pesoParam) : 20,
+        });
+      }
+    }
+  }, [searchParams, resetProgreso]);
 
   // Mutations
   const createProgresoMutation = useMutation({
@@ -165,6 +243,7 @@ export const ProgresoPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['progresos', activeUser?.id] });
       setIsModalOpen(false);
+      setEditingProgresoId(null);
       resetProgreso();
       setProgresoError(null);
     },
@@ -173,6 +252,56 @@ export const ProgresoPage: React.FC = () => {
       setProgresoError(msg);
     },
   });
+
+  const updateProgresoMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ProgresoFormValues }) => {
+      if (!activeUser) throw new Error('No user selected');
+      return progresosApi.update(id, {
+        ejercicioId: Number(data.ejercicioId),
+        fecha: data.fecha,
+        seriesRealizadas: Number(data.seriesRealizadas),
+        repeticionesRealizadas: Number(data.repeticionesRealizadas),
+        pesoRealizado: Number(data.pesoRealizado),
+        usuarioId: activeUser.id,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['progresos', activeUser?.id] });
+      setIsModalOpen(false);
+      setEditingProgresoId(null);
+      resetProgreso();
+      setProgresoError(null);
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || err.message || 'Error al actualizar el progreso';
+      setProgresoError(msg);
+    },
+  });
+
+  const handleOpenCreateProgreso = () => {
+    setEditingProgresoId(null);
+    setProgresoError(null);
+    resetProgreso({
+      fecha: getTodayStr(),
+      seriesRealizadas: 4,
+      repeticionesRealizadas: 10,
+      pesoRealizado: 20,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditProgreso = (p: Progreso) => {
+    setEditingProgresoId(p.id);
+    setProgresoError(null);
+    resetProgreso({
+      fecha: p.fecha,
+      ejercicioId: p.ejercicioCatalogoId || p.ejercicioId,
+      seriesRealizadas: p.seriesRealizadas,
+      repeticionesRealizadas: p.repeticionesRealizadas,
+      pesoRealizado: p.pesoRealizado || 0,
+    });
+    setIsModalOpen(true);
+  };
 
   const deleteProgresoMutation = useMutation({
     mutationFn: (id: number) => progresosApi.delete(id),
@@ -195,6 +324,7 @@ export const ProgresoPage: React.FC = () => {
       await refreshUsers();
       queryClient.invalidateQueries({ queryKey: ['pesosCorporales', activeUser?.id] });
       setIsPesoModalOpen(false);
+      setEditingPesoId(null);
       resetPeso();
       setPesoError(null);
     },
@@ -203,6 +333,52 @@ export const ProgresoPage: React.FC = () => {
       setPesoError(msg);
     },
   });
+
+  const updatePesoMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: PesoCorporalFormValues }) => {
+      if (!activeUser) throw new Error('No user selected');
+      return pesosCorporalesApi.update(id, {
+        peso: Number(data.peso),
+        fecha: data.fecha,
+        usuarioId: activeUser.id,
+        notas: data.notas?.trim() || undefined,
+      });
+    },
+    onSuccess: async () => {
+      await refreshUsers();
+      queryClient.invalidateQueries({ queryKey: ['pesosCorporales', activeUser?.id] });
+      setIsPesoModalOpen(false);
+      setEditingPesoId(null);
+      resetPeso();
+      setPesoError(null);
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || err.message || 'Error al actualizar el pesaje corporal';
+      setPesoError(msg);
+    },
+  });
+
+  const handleOpenCreatePeso = () => {
+    setEditingPesoId(null);
+    setPesoError(null);
+    resetPeso({
+      fecha: getTodayStr(),
+      peso: activeUser?.pesoActual || 70,
+      notas: '',
+    });
+    setIsPesoModalOpen(true);
+  };
+
+  const handleOpenEditPeso = (p: PesoCorporal) => {
+    setEditingPesoId(p.id);
+    setPesoError(null);
+    resetPeso({
+      fecha: p.fecha,
+      peso: p.peso,
+      notas: p.notas || '',
+    });
+    setIsPesoModalOpen(true);
+  };
 
   const deletePesoMutation = useMutation({
     mutationFn: (id: number) => pesosCorporalesApi.delete(id),
@@ -312,28 +488,16 @@ export const ProgresoPage: React.FC = () => {
           {/* Primary Action Button */}
           {activeTab === 'cargas' ? (
             <button
-              onClick={() => {
-                resetProgreso();
-                setProgresoError(null);
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter"
+              onClick={handleOpenCreateProgreso}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter cursor-pointer"
             >
               <Plus className="w-4 h-4" strokeWidth={2.5} />
               Registrar sesión
             </button>
           ) : (
             <button
-              onClick={() => {
-                resetPeso({
-                  fecha: getTodayStr(),
-                  peso: pesoActual || 70,
-                  notas: '',
-                });
-                setPesoError(null);
-                setIsPesoModalOpen(true);
-              }}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter"
+              onClick={handleOpenCreatePeso}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter cursor-pointer"
             >
               <Plus className="w-4 h-4" strokeWidth={2.5} />
               Registrar pesaje
@@ -492,13 +656,22 @@ export const ProgresoPage: React.FC = () => {
                           {p.pesoRealizado || 0} kg
                         </td>
                         <td className="py-3.5 px-5 text-center">
-                          <button
-                            onClick={() => deleteProgresoMutation.mutate(p.id)}
-                            className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors"
-                            title="Eliminar registro"
-                          >
-                            <Trash2 className="w-4 h-4" strokeWidth={2} />
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditProgreso(p)}
+                              className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] p-1.5 rounded-lg hover:bg-[var(--accent-primary)]/10 transition-colors cursor-pointer"
+                              title="Editar registro"
+                            >
+                              <Pencil className="w-4 h-4" strokeWidth={2} />
+                            </button>
+                            <button
+                              onClick={() => deleteProgresoMutation.mutate(p.id)}
+                              className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1.5 rounded-lg hover:bg-[var(--accent-error)]/10 transition-colors cursor-pointer"
+                              title="Eliminar registro"
+                            >
+                              <Trash2 className="w-4 h-4" strokeWidth={2} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -687,13 +860,22 @@ export const ProgresoPage: React.FC = () => {
                             )}
                           </td>
                           <td className="py-3.5 px-5 text-center">
-                            <button
-                              onClick={() => deletePesoMutation.mutate(pesoItem.id)}
-                              className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors"
-                              title="Eliminar pesaje"
-                            >
-                              <Trash2 className="w-4 h-4" strokeWidth={2} />
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditPeso(pesoItem)}
+                                className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] p-1 transition-colors cursor-pointer"
+                                title="Editar pesaje"
+                              >
+                                <Pencil className="w-4 h-4" strokeWidth={2} />
+                              </button>
+                              <button
+                                onClick={() => deletePesoMutation.mutate(pesoItem.id)}
+                                className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors cursor-pointer"
+                                title="Eliminar pesaje"
+                              >
+                                <Trash2 className="w-4 h-4" strokeWidth={2} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -706,14 +888,15 @@ export const ProgresoPage: React.FC = () => {
         </>
       )}
 
-      {/* Modal Registrar Progreso de Carga de Ejercicio */}
+      {/* Modal Registrar / Editar Progreso de Carga de Ejercicio */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
+          setEditingProgresoId(null);
           setProgresoError(null);
         }}
-        title="Registrar sesión de entrenamiento"
+        title={editingProgresoId ? "Editar registro de entrenamiento" : "Registrar sesión de entrenamiento"}
       >
         {progresoError && (
           <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-inter flex items-center gap-2">
@@ -721,9 +904,22 @@ export const ProgresoPage: React.FC = () => {
             <span>{progresoError}</span>
           </div>
         )}
+        {yaRegistrado && (
+          <div className="mb-4 p-3 rounded-xl bg-[var(--accent-secondary)]/10 border border-[var(--accent-secondary)]/30 text-[var(--accent-secondary)] text-xs font-inter flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold block font-space">Ejercicio ya registrado en esta fecha</span>
+              <span className="text-[11px]">No puedes volver a registrar el mismo ejercicio el mismo día. Edita el registro existente desde la bitácora si deseas ajustar tus cargas o repeticiones.</span>
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSubmitProgreso((data) => {
           setProgresoError(null);
-          createProgresoMutation.mutate(data);
+          if (editingProgresoId) {
+            updateProgresoMutation.mutate({ id: editingProgresoId, data });
+          } else {
+            createProgresoMutation.mutate(data);
+          }
         })} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
@@ -820,23 +1016,26 @@ export const ProgresoPage: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={createProgresoMutation.isPending || ejerciciosDisponibles.length === 0}
-              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
+              disabled={createProgresoMutation.isPending || updateProgresoMutation.isPending || yaRegistrado || ejerciciosDisponibles.length === 0}
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter cursor-pointer"
             >
-              {createProgresoMutation.isPending ? 'Guardando...' : 'Guardar sesión'}
+              {editingProgresoId
+                ? (updateProgresoMutation.isPending ? 'Actualizando...' : 'Guardar cambios')
+                : (createProgresoMutation.isPending ? 'Guardando...' : 'Guardar sesión')}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal Registrar Pesaje Corporal */}
+      {/* Modal Registrar / Editar Pesaje Corporal */}
       <Modal
         isOpen={isPesoModalOpen}
         onClose={() => {
           setIsPesoModalOpen(false);
+          setEditingPesoId(null);
           setPesoError(null);
         }}
-        title="Registrar pesaje corporal"
+        title={editingPesoId ? "Editar pesaje corporal" : "Registrar pesaje corporal"}
       >
         {pesoError && (
           <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-inter flex items-center gap-2">
@@ -844,12 +1043,27 @@ export const ProgresoPage: React.FC = () => {
             <span>{pesoError}</span>
           </div>
         )}
+        {pesoYaRegistrado && (
+          <div className="mb-4 p-3 rounded-xl bg-[var(--accent-secondary)]/10 border border-[var(--accent-secondary)]/30 text-[var(--accent-secondary)] text-xs font-inter flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold block font-space">Pesaje ya registrado en esta fecha</span>
+              <span className="text-[11px]">No puedes volver a añadir otro pesaje el mismo día. Edita el registro existente desde la tabla si deseas actualizar tus datos.</span>
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSubmitPeso((data) => {
           setPesoError(null);
-          createPesoMutation.mutate(data);
+          if (editingPesoId) {
+            updatePesoMutation.mutate({ id: editingPesoId, data });
+          } else {
+            createPesoMutation.mutate(data);
+          }
         })} className="space-y-4">
           <p className="text-xs text-[var(--text-secondary)] font-inter">
-            Registra una nueva medición de peso. Se actualizará en tu perfil y quedará asentado en la tabla de seguimiento histórico.
+            {editingPesoId
+              ? 'Modifica los valores del pesaje registrado para mantener calibradas tus métricas y curvas de progreso.'
+              : 'Registra una nueva medición de peso. Se actualizará en tu perfil y quedará asentado en la tabla de seguimiento histórico.'}
           </p>
 
           <div>
@@ -898,17 +1112,23 @@ export const ProgresoPage: React.FC = () => {
           <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
-              onClick={() => setIsPesoModalOpen(false)}
-              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
+              onClick={() => {
+                setIsPesoModalOpen(false);
+                setEditingPesoId(null);
+                setPesoError(null);
+              }}
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={createPesoMutation.isPending}
-              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
+              disabled={createPesoMutation.isPending || updatePesoMutation.isPending || pesoYaRegistrado}
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter cursor-pointer"
             >
-              {createPesoMutation.isPending ? 'Registrando...' : 'Registrar pesaje'}
+              {editingPesoId
+                ? (updatePesoMutation.isPending ? 'Guardando...' : 'Guardar cambios')
+                : (createPesoMutation.isPending ? 'Registrando...' : 'Registrar pesaje')}
             </button>
           </div>
         </form>

@@ -10,4 +10,6 @@ import java.util.List;
 public interface RutinaEjercicioRepository extends JpaRepository<RutinaEjercicio, Long> {
     List<RutinaEjercicio> findByRutinaId(Long rutinaId);
     List<RutinaEjercicio> findByEjercicioCatalogoId(Long ejercicioCatalogoId);
+    boolean existsByRutinaIdAndEjercicioCatalogoId(Long rutinaId, Long ejercicioCatalogoId);
+    boolean existsByRutinaIdAndEjercicioCatalogoIdAndIdNot(Long rutinaId, Long ejercicioCatalogoId, Long id);
 }

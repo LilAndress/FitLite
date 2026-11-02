@@ -22,6 +22,11 @@ export const progresosApi = {
     return data;
   },
 
+  update: async (id: number, progreso: ProgresoRequest): Promise<Progreso> => {
+    const { data } = await apiClient.put<Progreso>(`/progresos/${id}`, progreso);
+    return data;
+  },
+
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/progresos/${id}`);
   },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,12 +17,14 @@ import {
   ClipboardList,
   RefreshCw,
   Info,
-  X
+  X,
+  Activity,
+  Pencil
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { rutinasApi } from '../api/rutinas.api';
 import { ejerciciosApi } from '../api/ejercicios.api';
-import type { Rutina, RutinaIaBorradorResponse } from '../types';
+import type { Rutina, RutinaIaBorradorResponse, Ejercicio } from '../types';
 import { Modal } from '../components/Modal';
 import { Badge } from '../components/Badge';
 import { EjercicioCombobox } from '../components/EjercicioCombobox';
@@ -52,11 +54,14 @@ export const RutinasPage: React.FC = () => {
   const { activeUser } = useUser();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [expandedRutinaId, setExpandedRutinaId] = useState<number | null>(null);
   const [isRutinaModalOpen, setIsRutinaModalOpen] = useState(false);
   const [iaStep, setIaStep] = useState<IaStep>('choose');
   const [selectedRutinaForEjercicio, setSelectedRutinaForEjercicio] = useState<Rutina | null>(null);
+  const [editingEjercicio, setEditingEjercicio] = useState<Ejercicio | null>(null);
+  const [ejercicioError, setEjercicioError] = useState<string | null>(null);
 
   // IA state preloaded from activeUser perfilSalud
   const getInitialIaFormData = useCallback(() => ({
@@ -164,7 +169,39 @@ export const RutinasPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['ejercicios', selectedRutinaForEjercicio?.id] });
       queryClient.invalidateQueries({ queryKey: ['ejerciciosDisponibles'] });
       setSelectedRutinaForEjercicio(null);
+      setEditingEjercicio(null);
       resetEjercicioForm();
+      setEjercicioError(null);
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || err.message || 'Error al añadir el ejercicio';
+      setEjercicioError(msg);
+    },
+  });
+
+  const updateEjercicioMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: EjercicioFormValues }) => {
+      if (!selectedRutinaForEjercicio) throw new Error('No routine selected');
+      return ejerciciosApi.update(id, {
+        ejercicioCatalogoId: data.ejercicioCatalogoId,
+        nombre: data.nombre.trim(),
+        seriesObjetivo: Number(data.seriesObjetivo),
+        repeticionesObjetivo: Number(data.repeticionesObjetivo),
+        pesoObjetivo: data.pesoObjetivo !== undefined ? Number(data.pesoObjetivo) : 0,
+        rutinaId: selectedRutinaForEjercicio.id,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ejercicios', selectedRutinaForEjercicio?.id] });
+      queryClient.invalidateQueries({ queryKey: ['ejerciciosDisponibles'] });
+      setSelectedRutinaForEjercicio(null);
+      setEditingEjercicio(null);
+      resetEjercicioForm();
+      setEjercicioError(null);
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || err.message || 'Error al actualizar el ejercicio';
+      setEjercicioError(msg);
     },
   });
 
@@ -252,6 +289,23 @@ export const RutinasPage: React.FC = () => {
       ejercicios: iaBorrador.ejercicios.filter((_, i) => i !== index),
     };
     setIaBorrador(updated);
+  };
+
+  const handleUpdateEjercicioBorrador = (
+    index: number,
+    field: 'seriesObjetivo' | 'repeticionesObjetivo' | 'pesoObjetivo',
+    value: number | undefined
+  ) => {
+    if (!iaBorrador) return;
+    const updatedEjercicios = [...iaBorrador.ejercicios];
+    updatedEjercicios[index] = {
+      ...updatedEjercicios[index],
+      [field]: value,
+    };
+    setIaBorrador({
+      ...iaBorrador,
+      ejercicios: updatedEjercicios,
+    });
   };
 
   const handleRetryClick = () => {
@@ -559,16 +613,42 @@ export const RutinasPage: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-1.5 text-xs font-space tabular-nums">
-                          <span className="text-[var(--text-primary)] font-semibold">{ej.seriesObjetivo} series</span>
-                          <span className="text-[var(--text-secondary)]">×</span>
-                          <span className="text-[var(--text-primary)] font-semibold">{ej.repeticionesObjetivo} reps</span>
-                          <span className="text-[var(--text-secondary)]">•</span>
-                          {ej.pesoObjetivo != null ? (
-                            <span className="text-[var(--accent-primary)] font-bold">{ej.pesoObjetivo} kg</span>
-                          ) : (
-                            <span className="text-[var(--text-secondary)] italic text-[11px]">Por definir</span>
-                          )}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap text-xs font-space">
+                          <label className="flex items-center gap-1.5 bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
+                            <span className="text-[10px] text-[var(--text-secondary)] font-inter">Series:</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={20}
+                              value={ej.seriesObjetivo}
+                              onChange={(e) => handleUpdateEjercicioBorrador(idx, 'seriesObjetivo', Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-8 bg-transparent font-semibold text-[var(--text-primary)] text-center focus:outline-none"
+                            />
+                          </label>
+                          <label className="flex items-center gap-1.5 bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
+                            <span className="text-[10px] text-[var(--text-secondary)] font-inter">Reps:</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={ej.repeticionesObjetivo}
+                              onChange={(e) => handleUpdateEjercicioBorrador(idx, 'repeticionesObjetivo', Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-10 bg-transparent font-semibold text-[var(--text-primary)] text-center focus:outline-none"
+                            />
+                          </label>
+                          <label className="flex items-center gap-1.5 bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
+                            <span className="text-[10px] text-[var(--text-secondary)] font-inter">Peso:</span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              min={0}
+                              placeholder="0"
+                              value={ej.pesoObjetivo ?? ''}
+                              onChange={(e) => handleUpdateEjercicioBorrador(idx, 'pesoObjetivo', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                              className="w-12 bg-transparent font-bold text-[var(--accent-primary)] text-center focus:outline-none"
+                            />
+                            <span className="text-[10px] text-[var(--accent-primary)] font-semibold font-space">kg</span>
+                          </label>
                         </div>
                         {ej.nota && (
                           <p className="text-[10px] text-[var(--text-secondary)] font-inter mt-1.5 flex items-start gap-1">
@@ -716,8 +796,31 @@ export const RutinasPage: React.FC = () => {
                 toggleRutinaMutation.mutate({ id: rutina.id, activa: !rutina.activa })
               }
               onDelete={() => deleteRutinaMutation.mutate(rutina.id)}
-              onAddEjercicio={() => setSelectedRutinaForEjercicio(rutina)}
+              onAddEjercicio={() => {
+                setSelectedRutinaForEjercicio(rutina);
+                setEditingEjercicio(null);
+                setEjercicioError(null);
+                resetEjercicioForm({
+                  seriesObjetivo: 4,
+                  repeticionesObjetivo: 10,
+                  pesoObjetivo: 0,
+                  nombre: '',
+                });
+              }}
+              onEditEjercicio={(ej) => {
+                setSelectedRutinaForEjercicio(rutina);
+                setEditingEjercicio(ej);
+                setEjercicioError(null);
+                setEjercicioValue('nombre', ej.nombre);
+                setEjercicioValue('ejercicioCatalogoId', ej.ejercicioCatalogoId);
+                setEjercicioValue('seriesObjetivo', ej.seriesObjetivo);
+                setEjercicioValue('repeticionesObjetivo', ej.repeticionesObjetivo);
+                setEjercicioValue('pesoObjetivo', ej.pesoObjetivo || 0);
+              }}
               onDeleteEjercicio={(eId) => deleteEjercicioMutation.mutate(eId)}
+              onRegistrarEntreno={(ej) =>
+                navigate(`/progreso?registrar=true&ejercicioId=${ej.ejercicioCatalogoId || ej.id}&peso=${ej.pesoObjetivo || 0}&reps=${ej.repeticionesObjetivo}&series=${ej.seriesObjetivo}`)
+              }
             />
           ))}
         </div>
@@ -733,13 +836,37 @@ export const RutinasPage: React.FC = () => {
         {renderModalContent()}
       </Modal>
 
-      {/* Modal Nuevo Ejercicio */}
+      {/* Modal Añadir / Editar Ejercicio */}
       <Modal
         isOpen={Boolean(selectedRutinaForEjercicio)}
-        onClose={() => setSelectedRutinaForEjercicio(null)}
-        title={`Añadir ejercicio a ${selectedRutinaForEjercicio?.nombre || ''}`}
+        onClose={() => {
+          setSelectedRutinaForEjercicio(null);
+          setEditingEjercicio(null);
+          setEjercicioError(null);
+        }}
+        title={
+          editingEjercicio
+            ? `Editar ejercicio en ${selectedRutinaForEjercicio?.nombre || ''}`
+            : `Añadir ejercicio a ${selectedRutinaForEjercicio?.nombre || ''}`
+        }
       >
-        <form onSubmit={handleEjercicioSubmit((data) => createEjercicioMutation.mutate(data))} className="space-y-4">
+        {ejercicioError && (
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-inter flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{ejercicioError}</span>
+          </div>
+        )}
+        <form
+          onSubmit={handleEjercicioSubmit((data) => {
+            setEjercicioError(null);
+            if (editingEjercicio) {
+              updateEjercicioMutation.mutate({ id: editingEjercicio.id, data });
+            } else {
+              createEjercicioMutation.mutate(data);
+            }
+          })}
+          className="space-y-4"
+        >
           <EjercicioCombobox
             value={watchEjercicio('nombre') || ''}
             selectedCatalogoId={watchEjercicio('ejercicioCatalogoId')}
@@ -798,17 +925,23 @@ export const RutinasPage: React.FC = () => {
           <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
-              onClick={() => setSelectedRutinaForEjercicio(null)}
-              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
+              onClick={() => {
+                setSelectedRutinaForEjercicio(null);
+                setEditingEjercicio(null);
+                setEjercicioError(null);
+              }}
+              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={createEjercicioMutation.isPending}
-              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
+              disabled={createEjercicioMutation.isPending || updateEjercicioMutation.isPending}
+              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter cursor-pointer"
             >
-              {createEjercicioMutation.isPending ? 'Guardando...' : 'Añadir ejercicio'}
+              {editingEjercicio
+                ? (updateEjercicioMutation.isPending ? 'Actualizando...' : 'Guardar cambios')
+                : (createEjercicioMutation.isPending ? 'Guardando...' : 'Añadir ejercicio')}
             </button>
           </div>
         </form>
@@ -826,7 +959,9 @@ interface RutinaItemProps {
   onToggleStatus: () => void;
   onDelete: () => void;
   onAddEjercicio: () => void;
+  onEditEjercicio?: (ej: Ejercicio) => void;
   onDeleteEjercicio: (id: number) => void;
+  onRegistrarEntreno?: (ej: Ejercicio) => void;
 }
 
 const RutinaItem: React.FC<RutinaItemProps> = ({
@@ -837,7 +972,9 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
   onToggleStatus,
   onDelete,
   onAddEjercicio,
+  onEditEjercicio,
   onDeleteEjercicio,
+  onRegistrarEntreno,
 }) => {
   const { data: ejercicios = [], isLoading } = useQuery({
     queryKey: ['ejercicios', rutina.id],
@@ -958,14 +1095,34 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
                       <span className="text-[var(--text-secondary)]">•</span>
                       <span className="text-[var(--accent-primary)] font-bold">{ej.pesoObjetivo || 0} kg</span>
                     </div>
+                    {onRegistrarEntreno && (
+                      <button
+                        onClick={() => onRegistrarEntreno(ej)}
+                        className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/20 text-[10px] font-semibold font-space active:scale-95 transition-all cursor-pointer"
+                      >
+                        <Activity className="w-3 h-3" />
+                        <span>Registrar entreno</span>
+                      </button>
+                    )}
                   </div>
-                  <button
-                    onClick={() => onDeleteEjercicio(ej.id)}
-                    className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors"
-                    title="Eliminar ejercicio"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {onEditEjercicio && (
+                      <button
+                        onClick={() => onEditEjercicio(ej)}
+                        className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] p-1.5 rounded-lg hover:bg-[var(--accent-primary)]/10 transition-colors cursor-pointer"
+                        title="Editar ejercicio"
+                      >
+                        <Pencil className="w-3.5 h-3.5" strokeWidth={2} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onDeleteEjercicio(ej.id)}
+                      className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1.5 rounded-lg hover:bg-[var(--accent-error)]/10 transition-colors cursor-pointer"
+                      title="Eliminar ejercicio"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

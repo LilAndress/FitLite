@@ -25,6 +25,10 @@ public class PesoCorporalService {
         Usuario usuario = usuarioRepository.findById(request.getUsuarioId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + request.getUsuarioId()));
 
+        if (pesoCorporalRepository.existsByUsuarioIdAndFecha(usuario.getId(), request.getFecha())) {
+            throw new IllegalArgumentException("Ya existe un pesaje registrado para la fecha " + request.getFecha() + ". Puedes editar el pesaje existente.");
+        }
+
         PesoCorporal pesoCorporal = PesoCorporal.builder()
                 .peso(request.getPeso())
                 .fecha(request.getFecha())
@@ -35,8 +39,38 @@ public class PesoCorporalService {
         PesoCorporal guardado = pesoCorporalRepository.save(pesoCorporal);
 
         // Actualizar el peso actual del perfil del usuario
-        usuario.setPesoActual(request.getPeso());
-        usuarioRepository.save(usuario);
+        List<PesoCorporal> ordenados = pesoCorporalRepository.findByUsuarioIdOrderByFechaDesc(usuario.getId());
+        if (!ordenados.isEmpty()) {
+            usuario.setPesoActual(ordenados.get(0).getPeso());
+            usuarioRepository.save(usuario);
+        }
+
+        return mapToResponse(guardado);
+    }
+
+    @Transactional
+    public PesoCorporalResponseDTO actualizarPeso(Long id, PesoCorporalRequestDTO request) {
+        PesoCorporal pesoCorporal = pesoCorporalRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Registro de peso no encontrado con ID: " + id));
+
+        Usuario usuario = pesoCorporal.getUsuario();
+
+        if (pesoCorporalRepository.existsByUsuarioIdAndFechaAndIdNot(usuario.getId(), request.getFecha(), id)) {
+            throw new IllegalArgumentException("Ya existe otro pesaje registrado para la fecha " + request.getFecha() + ".");
+        }
+
+        pesoCorporal.setPeso(request.getPeso());
+        pesoCorporal.setFecha(request.getFecha());
+        pesoCorporal.setNotas(request.getNotas());
+
+        PesoCorporal guardado = pesoCorporalRepository.save(pesoCorporal);
+
+        // Actualizar el peso del usuario con el más reciente
+        List<PesoCorporal> ordenados = pesoCorporalRepository.findByUsuarioIdOrderByFechaDesc(usuario.getId());
+        if (!ordenados.isEmpty()) {
+            usuario.setPesoActual(ordenados.get(0).getPeso());
+            usuarioRepository.save(usuario);
+        }
 
         return mapToResponse(guardado);
     }

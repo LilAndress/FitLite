@@ -17,6 +17,11 @@ export const pesosCorporalesApi = {
     return data;
   },
 
+  update: async (id: number, pesoData: PesoCorporalRequest): Promise<PesoCorporal> => {
+    const { data } = await apiClient.put<PesoCorporal>(`/pesos-corporales/${id}`, pesoData);
+    return data;
+  },
+
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/pesos-corporales/${id}`);
   },

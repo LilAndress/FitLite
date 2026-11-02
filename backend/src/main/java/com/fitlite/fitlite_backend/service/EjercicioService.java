@@ -32,6 +32,10 @@ public class EjercicioService {
 
         EjercicioCatalogo catalogo = obtenerOCrearCatalogo(request, rutina.getUsuario().getId());
 
+        if (rutinaEjercicioRepository.existsByRutinaIdAndEjercicioCatalogoId(rutina.getId(), catalogo.getId())) {
+            throw new IllegalArgumentException("El ejercicio '" + catalogo.getNombre() + "' ya forma parte de esta rutina.");
+        }
+
         RutinaEjercicio ejercicio = RutinaEjercicio.builder()
                 .rutina(rutina)
                 .ejercicioCatalogo(catalogo)
@@ -65,15 +69,22 @@ public class EjercicioService {
     public EjercicioResponseDTO actualizarEjercicio(Long id, EjercicioRequestDTO request) {
         RutinaEjercicio ejercicio = buscarEntidadPorId(id);
 
-        if (!ejercicio.getRutina().getId().equals(request.getRutinaId())) {
-            Rutina nuevaRutina = rutinaRepository.findById(request.getRutinaId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Rutina no encontrada con ID: " + request.getRutinaId()));
+        Long rutinaIdFinal = request.getRutinaId() != null ? request.getRutinaId() : ejercicio.getRutina().getId();
+        if (!ejercicio.getRutina().getId().equals(rutinaIdFinal)) {
+            Rutina nuevaRutina = rutinaRepository.findById(rutinaIdFinal)
+                    .orElseThrow(() -> new ResourceNotFoundException("Rutina no encontrada con ID: " + rutinaIdFinal));
             ejercicio.setRutina(nuevaRutina);
         }
 
+        EjercicioCatalogo catalogo = ejercicio.getEjercicioCatalogo();
         if (request.getEjercicioCatalogoId() != null || (request.getNombre() != null && !request.getNombre().isBlank())) {
-            EjercicioCatalogo catalogo = obtenerOCrearCatalogo(request, ejercicio.getRutina().getUsuario().getId());
+            catalogo = obtenerOCrearCatalogo(request, ejercicio.getRutina().getUsuario().getId());
             ejercicio.setEjercicioCatalogo(catalogo);
+        }
+
+        if (catalogo != null && rutinaEjercicioRepository.existsByRutinaIdAndEjercicioCatalogoIdAndIdNot(
+                rutinaIdFinal, catalogo.getId(), ejercicio.getId())) {
+            throw new IllegalArgumentException("El ejercicio '" + catalogo.getNombre() + "' ya existe en esta rutina.");
         }
 
         ejercicio.setSeriesObjetivo(request.getSeriesObjetivo());

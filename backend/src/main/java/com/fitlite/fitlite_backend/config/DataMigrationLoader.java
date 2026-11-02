@@ -266,6 +266,16 @@ public class DataMigrationLoader implements CommandLineRunner {
 
     private void asegurarCampos() {
         try {
+            jdbcTemplate.execute("ALTER TABLE progresos ALTER COLUMN ejercicio_id DROP NOT NULL");
+        } catch (Exception e) {
+            log.debug("Nota al verificar nulabilidad de ejercicio_id en progresos: {}", e.getMessage());
+        }
+        try {
+            jdbcTemplate.execute("ALTER TABLE progresos DROP CONSTRAINT IF EXISTS fkjhora3f30dchlke6caldctnsc");
+        } catch (Exception e) {
+            log.debug("Nota al verificar FK vieja en progresos: {}", e.getMessage());
+        }
+        try {
             jdbcTemplate.execute("UPDATE rutinas SET generada_por_ia = false WHERE generada_por_ia IS NULL");
             jdbcTemplate.execute("UPDATE rutinas SET activa = true WHERE activa IS NULL");
             jdbcTemplate.execute("UPDATE usuarios SET onboarding_completado = true WHERE onboarding_completado IS NULL AND id IN (SELECT DISTINCT usuario_id FROM rutinas)");

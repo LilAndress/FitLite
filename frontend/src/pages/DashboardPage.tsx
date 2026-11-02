@@ -750,7 +750,7 @@ export const DashboardPage: React.FC = () => {
                 </div>
 
                 <Link
-                  to="/progreso"
+                  to={graficaTab === 'peso' ? "/progreso?tab=pesoCorporal" : "/progreso"}
                   className="inline-flex items-center gap-1 text-xs text-[var(--accent-primary)] hover:opacity-80 transition-opacity font-medium font-inter ml-1"
                 >
                   <span>Detalles</span>

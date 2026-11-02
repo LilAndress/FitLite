@@ -25,6 +25,13 @@ public class PesoCorporalController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<PesoCorporalResponseDTO> actualizarPeso(@PathVariable Long id,
+                                                                 @Valid @RequestBody PesoCorporalRequestDTO request) {
+        PesoCorporalResponseDTO response = pesoCorporalService.actualizarPeso(id, request);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PesoCorporalResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(pesoCorporalService.obtenerPorId(id));

@@ -84,6 +84,23 @@ export const BienvenidaPage: React.FC = () => {
     return list;
   };
 
+  const handleUpdateEjercicioBorrador = (
+    index: number,
+    field: 'seriesObjetivo' | 'repeticionesObjetivo' | 'pesoObjetivo',
+    value: number | undefined
+  ) => {
+    if (!borrador) return;
+    const updated = [...borrador.ejercicios];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setBorrador({
+      ...borrador,
+      ejercicios: updated,
+    });
+  };
+
   // Generate Draft Mutation
   const generarBorradorMutation = useMutation({
     mutationFn: async (isReturning: boolean) => {
@@ -556,9 +573,42 @@ export const BienvenidaPage: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    <div className="text-xs font-space font-semibold text-[var(--text-primary)] tabular-nums shrink-0 bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
-                      {ej.seriesObjetivo} × {ej.repeticionesObjetivo}
-                      {ej.pesoObjetivo ? ` • ${ej.pesoObjetivo} kg` : ''}
+                    <div className="flex items-center gap-1.5 shrink-0 text-xs font-space">
+                      <label className="flex items-center gap-1 bg-[var(--surface)] px-2 py-1 rounded-lg border border-[var(--border)]">
+                        <span className="text-[10px] text-[var(--text-secondary)] font-inter">Series:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={ej.seriesObjetivo}
+                          onChange={(e) => handleUpdateEjercicioBorrador(idx, 'seriesObjetivo', Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-8 bg-transparent font-semibold text-[var(--text-primary)] text-center focus:outline-none"
+                        />
+                      </label>
+                      <label className="flex items-center gap-1 bg-[var(--surface)] px-2 py-1 rounded-lg border border-[var(--border)]">
+                        <span className="text-[10px] text-[var(--text-secondary)] font-inter">Reps:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={ej.repeticionesObjetivo}
+                          onChange={(e) => handleUpdateEjercicioBorrador(idx, 'repeticionesObjetivo', Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-10 bg-transparent font-semibold text-[var(--text-primary)] text-center focus:outline-none"
+                        />
+                      </label>
+                      <label className="flex items-center gap-1 bg-[var(--surface)] px-2 py-1 rounded-lg border border-[var(--border)]">
+                        <span className="text-[10px] text-[var(--text-secondary)] font-inter">Peso:</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min={0}
+                          placeholder="0"
+                          value={ej.pesoObjetivo ?? ''}
+                          onChange={(e) => handleUpdateEjercicioBorrador(idx, 'pesoObjetivo', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                          className="w-11 bg-transparent font-bold text-[var(--accent-primary)] text-center focus:outline-none"
+                        />
+                        <span className="text-[10px] text-[var(--accent-primary)] font-semibold font-space">kg</span>
+                      </label>
                     </div>
                   </div>
                 ))}

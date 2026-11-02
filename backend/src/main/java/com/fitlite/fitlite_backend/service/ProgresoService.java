@@ -46,6 +46,10 @@ public class ProgresoService {
             throw new IllegalArgumentException("Debe proporcionar un ID de ejercicio válido");
         }
 
+        if (progresoRepository.existsByUsuarioIdAndEjercicioCatalogoIdAndFecha(usuario.getId(), catalogo.getId(), request.getFecha())) {
+            throw new IllegalArgumentException("Ya existe un registro para " + catalogo.getNombre() + " en la fecha " + request.getFecha() + ". Puedes editar el registro existente.");
+        }
+
         Progreso progreso = Progreso.builder()
                 .fecha(request.getFecha())
                 .seriesRealizadas(request.getSeriesRealizadas())
@@ -58,6 +62,58 @@ public class ProgresoService {
 
         Progreso guardado = progresoRepository.save(progreso);
         return mapToResponse(guardado);
+    }
+
+    @Transactional
+    public ProgresoResponseDTO actualizarProgreso(Long id, ProgresoRequestDTO request) {
+        Progreso progreso = buscarEntidadPorId(id);
+
+        if (request.getUsuarioId() != null && !progreso.getUsuario().getId().equals(request.getUsuarioId())) {
+            Usuario nuevoUsuario = usuarioRepository.findById(request.getUsuarioId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + request.getUsuarioId()));
+            progreso.setUsuario(nuevoUsuario);
+        }
+
+        EjercicioCatalogo catalogo = progreso.getEjercicioCatalogo();
+        if (request.getEjercicioCatalogoId() != null) {
+            catalogo = ejercicioCatalogoRepository.findById(request.getEjercicioCatalogoId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Ejercicio del catálogo no encontrado con ID: " + request.getEjercicioCatalogoId()));
+            progreso.setEjercicioCatalogo(catalogo);
+        } else if (request.getEjercicioId() != null) {
+            catalogo = ejercicioCatalogoRepository.findById(request.getEjercicioId()).orElse(null);
+            if (catalogo == null) {
+                catalogo = rutinaEjercicioRepository.findById(request.getEjercicioId())
+                        .map(RutinaEjercicio::getEjercicioCatalogo)
+                        .orElseThrow(() -> new ResourceNotFoundException("Ejercicio no encontrado con ID: " + request.getEjercicioId()));
+            }
+            progreso.setEjercicioCatalogo(catalogo);
+        }
+
+        java.time.LocalDate fechaFinal = request.getFecha() != null ? request.getFecha() : progreso.getFecha();
+
+        if (catalogo != null && progresoRepository.existsByUsuarioIdAndEjercicioCatalogoIdAndFechaAndIdNot(
+                progreso.getUsuario().getId(), catalogo.getId(), fechaFinal, progreso.getId())) {
+            throw new IllegalArgumentException("Ya existe otro registro para " + catalogo.getNombre() + " en la fecha " + fechaFinal + ".");
+        }
+
+        if (request.getFecha() != null) {
+            progreso.setFecha(request.getFecha());
+        }
+        if (request.getSeriesRealizadas() > 0) {
+            progreso.setSeriesRealizadas(request.getSeriesRealizadas());
+        }
+        if (request.getRepeticionesRealizadas() > 0) {
+            progreso.setRepeticionesRealizadas(request.getRepeticionesRealizadas());
+        }
+        if (request.getPesoRealizado() != null) {
+            progreso.setPesoRealizado(request.getPesoRealizado());
+        }
+        if (request.getOrigen() != null) {
+            progreso.setOrigen(request.getOrigen());
+        }
+
+        Progreso actualizado = progresoRepository.save(progreso);
+        return mapToResponse(actualizado);
     }
 
     @Transactional(readOnly = true)

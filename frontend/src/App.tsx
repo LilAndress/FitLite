@@ -23,6 +23,18 @@ const queryClient = new QueryClient({
   },
 });
 
+// Protected route guard: requires activeUser and checks onboarding completion
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { activeUser } = useUser();
+  if (!activeUser) {
+    return <Navigate to="/login" replace />;
+  }
+  if (activeUser.onboardingCompletado === false) {
+    return <Navigate to="/bienvenida" replace />;
+  }
+  return <>{children}</>;
+}
+
 function AppContent() {
   const location = useLocation();
   const { activeUser } = useUser();
@@ -30,17 +42,6 @@ function AppContent() {
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/registro' || location.pathname === '/bienvenida';
   const isLandingRoute = location.pathname === '/landing' || (location.pathname === '/' && !activeUser);
   const hideAppNavbar = isAuthRoute || isLandingRoute;
-
-  // Protected route guard: requires activeUser and checks onboarding completion
-  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-    if (!activeUser) {
-      return <Navigate to="/login" replace />;
-    }
-    if (activeUser.onboardingCompletado === false) {
-      return <Navigate to="/bienvenida" replace />;
-    }
-    return <>{children}</>;
-  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col font-inter">

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -160,13 +161,24 @@ public class UsuarioService {
         usuario.setPesoActual(request.getPeso());
         Usuario guardado = usuarioRepository.save(usuario);
 
-        PesoCorporal nuevoPeso = PesoCorporal.builder()
-                .peso(request.getPeso())
-                .fecha(request.getFecha() != null ? request.getFecha() : LocalDate.now())
-                .notas(request.getNotas())
-                .usuario(guardado)
-                .build();
-        pesoCorporalRepository.save(nuevoPeso);
+        LocalDate fecha = request.getFecha() != null ? request.getFecha() : LocalDate.now();
+        Optional<PesoCorporal> existente = pesoCorporalRepository.findByUsuarioIdAndFecha(guardado.getId(), fecha);
+        if (existente.isPresent()) {
+            PesoCorporal pc = existente.get();
+            pc.setPeso(request.getPeso());
+            if (request.getNotas() != null && !request.getNotas().isBlank()) {
+                pc.setNotas(request.getNotas());
+            }
+            pesoCorporalRepository.save(pc);
+        } else {
+            PesoCorporal nuevoPeso = PesoCorporal.builder()
+                    .peso(request.getPeso())
+                    .fecha(fecha)
+                    .notas(request.getNotas())
+                    .usuario(guardado)
+                    .build();
+            pesoCorporalRepository.save(nuevoPeso);
+        }
 
         return mapToResponse(guardado);
     }
