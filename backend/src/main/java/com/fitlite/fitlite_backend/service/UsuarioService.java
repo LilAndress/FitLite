@@ -269,6 +269,109 @@ public class UsuarioService {
                 .tiempoSinEntrenar(usuario.getTiempoSinEntrenar())
                 .tiempoTotalEntrenando(usuario.getTiempoTotalEntrenando())
                 .onboardingCompletado(usuario.isOnboardingCompletado())
+                .consentimientoIA(usuario.getConsentimientoIA() != null ? usuario.getConsentimientoIA() : true)
                 .build();
+    }
+
+    /**
+     * Actualiza el perfil del usuario autenticado (no permite cambiar rol).
+     * Si cambia el email, exige la contraseña actual como confirmación.
+     */
+    @Transactional
+    public UsuarioResponseDTO actualizarPerfil(Long userId, com.fitlite.fitlite_backend.dto.ActualizarPerfilDTO dto) {
+        Usuario usuario = buscarEntidadPorId(userId);
+
+        // Si el email cambió, verificar contraseña de confirmación
+        if (!usuario.getEmail().equalsIgnoreCase(dto.getEmail())) {
+            if (dto.getPasswordConfirmacion() == null || dto.getPasswordConfirmacion().isBlank()) {
+                throw new IllegalArgumentException("Debes proporcionar tu contraseña actual para cambiar el correo electrónico.");
+            }
+            if (!usuario.getPassword().equals(dto.getPasswordConfirmacion())) {
+                throw new IllegalArgumentException("La contraseña proporcionada es incorrecta.");
+            }
+            if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
+                throw new IllegalArgumentException("Ya existe otro usuario registrado con el email: " + dto.getEmail());
+            }
+            usuario.setEmail(dto.getEmail());
+        }
+
+        usuario.setNombre(dto.getNombre());
+
+        if (dto.getObjetivo() != null) {
+            usuario.setObjetivo(dto.getObjetivo());
+        }
+        if (dto.getEdad() != null) {
+            usuario.setEdad(dto.getEdad());
+        }
+        if (dto.getEstatura() != null) {
+            usuario.setEstatura(dto.getEstatura());
+        }
+        if (dto.getNivelExperiencia() != null) {
+            usuario.setNivelExperiencia(dto.getNivelExperiencia());
+        }
+        if (dto.getConsentimientoIA() != null) {
+            usuario.setConsentimientoIA(dto.getConsentimientoIA());
+        }
+
+        Usuario actualizado = usuarioRepository.save(usuario);
+
+        // Actualizar perfil de salud si viene en la petición
+        UsuarioResponseDTO response = mapToResponse(actualizado);
+        if (dto.getPerfilSalud() != null) {
+            com.fitlite.fitlite_backend.dto.PerfilSaludResponseDTO perfilRes =
+                    perfilSaludService.guardarOActualizarPerfil(actualizado.getId(), dto.getPerfilSalud());
+            response.setPerfilSalud(perfilRes);
+        }
+
+        return response;
+    }
+
+    /**
+     * Cambia la contraseña del usuario autenticado.
+     */
+    @Transactional
+    public UsuarioResponseDTO cambiarPassword(Long userId, com.fitlite.fitlite_backend.dto.CambioPasswordDTO dto) {
+        Usuario usuario = buscarEntidadPorId(userId);
+
+        if (!usuario.getPassword().equals(dto.getPasswordActual())) {
+            throw new IllegalArgumentException("La contraseña actual es incorrecta.");
+        }
+
+        usuario.setPassword(dto.getPasswordNueva());
+        Usuario guardado = usuarioRepository.save(usuario);
+        return mapToResponse(guardado);
+    }
+
+    /**
+     * Elimina la cuenta del usuario autenticado tras verificar contraseña.
+     */
+    @Transactional
+    public void eliminarCuentaPropia(Long userId, com.fitlite.fitlite_backend.dto.EliminarCuentaDTO dto) {
+        Usuario usuario = buscarEntidadPorId(userId);
+
+        if (!usuario.getPassword().equals(dto.getPassword())) {
+            throw new IllegalArgumentException("La contraseña es incorrecta. No se puede eliminar la cuenta.");
+        }
+
+        usuarioRepository.delete(usuario);
+    }
+
+    /**
+     * Borra los datos de salud del usuario (zonas de molestia, discapacidad, enfermedades).
+     */
+    @Transactional
+    public UsuarioResponseDTO borrarDatosSalud(Long userId) {
+        Usuario usuario = buscarEntidadPorId(userId);
+        if (usuario.getPerfilSalud() != null) {
+            com.fitlite.fitlite_backend.entity.PerfilSalud perfil = usuario.getPerfilSalud();
+            perfil.setTieneDiscapacidad(false);
+            perfil.setDetalleDiscapacidad(null);
+            perfil.setZonasMolestia(new java.util.ArrayList<>());
+            perfil.setEnfermedadesPreexistentes(null);
+            perfil.setFechaActualizacion(LocalDateTime.now());
+        }
+        usuario.setConsentimientoIA(false);
+        Usuario guardado = usuarioRepository.save(usuario);
+        return mapToResponse(guardado);
     }
 }

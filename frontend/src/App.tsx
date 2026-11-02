@@ -9,6 +9,7 @@ import { ProgresoPage } from './pages/ProgresoPage';
 import { UsuariosPage } from './pages/UsuariosPage';
 import { AuthPage } from './pages/AuthPage';
 import { CoachIaPage } from './pages/CoachIaPage';
+import { PerfilPage } from './pages/PerfilPage';
 import { CoachIaFloatingWidget } from './components/CoachIaFloatingWidget';
 
 import { BienvenidaPage } from './pages/BienvenidaPage';
@@ -79,6 +80,7 @@ function AppContent() {
           <Route path="/registro" element={<AuthPage />} />
           <Route path="/rutinas" element={<ProtectedRoute><RutinasPage /></ProtectedRoute>} />
           <Route path="/progreso" element={<ProtectedRoute><ProgresoPage /></ProtectedRoute>} />
+          <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
           <Route path="/coach" element={<ProtectedRoute><CoachIaPage /></ProtectedRoute>} />
           <Route path="/usuarios" element={<ProtectedRoute><UsuariosPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -81,4 +81,43 @@ export const usuariosApi = {
     const { data } = await apiClient.post<Usuario>('/usuarios/me/onboarding', request || {});
     return data;
   },
+
+  // ─── Self-service /me endpoints ───────────────────────────────────
+
+  getMe: async (): Promise<Usuario> => {
+    const { data } = await apiClient.get<Usuario>('/usuarios/me');
+    return data;
+  },
+
+  updateMe: async (perfil: {
+    nombre: string;
+    email: string;
+    passwordConfirmacion?: string;
+    objetivo?: string;
+    edad?: number;
+    estatura?: number;
+    nivelExperiencia?: string;
+    perfilSalud?: import('../types').PerfilSaludRequest;
+    consentimientoIA?: boolean;
+  }): Promise<Usuario> => {
+    const { data } = await apiClient.put<Usuario>('/usuarios/me', perfil);
+    return data;
+  },
+
+  changePassword: async (payload: {
+    passwordActual: string;
+    passwordNueva: string;
+  }): Promise<Usuario> => {
+    const { data } = await apiClient.patch<Usuario>('/usuarios/me/password', payload);
+    return data;
+  },
+
+  deleteMe: async (password: string): Promise<void> => {
+    await apiClient.delete('/usuarios/me', { data: { password } });
+  },
+
+  deleteHealthData: async (): Promise<Usuario> => {
+    const { data } = await apiClient.delete<Usuario>('/usuarios/me/datos-salud');
+    return data;
+  },
 };

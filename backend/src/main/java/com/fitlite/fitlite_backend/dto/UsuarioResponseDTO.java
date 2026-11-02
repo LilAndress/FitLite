@@ -33,4 +33,5 @@ public class UsuarioResponseDTO {
     private String tiempoSinEntrenar;
     private String tiempoTotalEntrenando;
     private Boolean onboardingCompletado;
+    private Boolean consentimientoIA;
 }

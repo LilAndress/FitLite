@@ -44,6 +44,7 @@ export interface Usuario {
   fechaRegistro: string;
   perfilSalud?: PerfilSalud | null;
   onboardingCompletado?: boolean;
+  consentimientoIA?: boolean;
   situacionInicial?: string | null;
   tiempoSinEntrenar?: string | null;
   tiempoTotalEntrenando?: string | null;

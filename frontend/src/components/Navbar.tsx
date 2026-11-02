@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, UserCircle2, LogOut, Sparkles } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, UserCircle2, LogOut, Sparkles, User, Settings } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 export const Navbar: React.FC = () => {
@@ -94,16 +94,30 @@ export const Navbar: React.FC = () => {
                   <p className="text-[11px] text-[var(--text-secondary)] font-inter truncate">
                     {activeUser?.email}
                   </p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-space tracking-wide ${
-                      activeUser?.rol === 'ADMIN'
-                        ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border border-[var(--accent-primary)]/40'
-                        : 'bg-[var(--accent-secondary)]/15 text-[var(--accent-secondary)] border border-[var(--accent-secondary)]/40'
-                    }`}>
-                      ROL: {activeUser?.rol || 'USUARIO'}
-                    </span>
-                  </div>
                 </div>
+
+                {/* Enlaces de Perfil */}
+                <Link
+                  to="/perfil"
+                  className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[var(--text-primary)] hover:bg-[var(--bg-primary)] hover:text-[var(--accent-primary)] font-medium transition-colors font-inter mb-1"
+                >
+                  <span className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                    <span>Ver perfil</span>
+                  </span>
+                  <span className="text-[var(--text-secondary)] text-[11px]">→</span>
+                </Link>
+
+                <Link
+                  to="/perfil"
+                  className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[var(--text-primary)] hover:bg-[var(--bg-primary)] hover:text-[var(--accent-primary)] font-medium transition-colors font-inter mb-1"
+                >
+                  <span className="flex items-center gap-2">
+                    <Settings className="w-3.5 h-3.5 text-[var(--accent-secondary)]" />
+                    <span>Editar perfil</span>
+                  </span>
+                  <span className="text-[var(--text-secondary)] text-[11px]">→</span>
+                </Link>
 
                 {/* Acceso a Gestión de Usuarios SOLO si es ADMIN */}
                 {activeUser?.rol === 'ADMIN' && (
@@ -125,7 +139,7 @@ export const Navbar: React.FC = () => {
                     logout();
                     navigate('/');
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-red-400 hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter cursor-pointer"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-red-400 hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter cursor-pointer mt-1 border-t border-[var(--border)] pt-2"
                 >
                   <span className="flex items-center gap-2">
                     <LogOut className="w-3.5 h-3.5" />
@@ -160,7 +174,10 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center justify-around py-2 border-t border-[var(--border)]">
-          {navItems.map((item) => {
+          {[
+            ...navItems,
+            { label: 'Perfil', path: '/perfil', icon: UserCircle2 },
+          ].map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

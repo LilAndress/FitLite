@@ -100,4 +100,52 @@ public class UsuarioController {
         usuarioService.eliminarUsuario(id);
         return ResponseEntity.noContent().build();
     }
+
+    // ─── Self-service /me endpoints ───────────────────────────────────
+
+    private Long resolveUserId(Long headerUserId) {
+        if (headerUserId == null) {
+            throw new IllegalArgumentException("No se pudo identificar al usuario autenticado.");
+        }
+        return headerUserId;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UsuarioResponseDTO> obtenerPerfilPropio(
+            @RequestHeader(value = "X-User-Id", required = false) Long userIdHeader) {
+        Long userId = resolveUserId(userIdHeader);
+        return ResponseEntity.ok(usuarioService.obtenerPorId(userId));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UsuarioResponseDTO> actualizarPerfilPropio(
+            @RequestHeader(value = "X-User-Id", required = false) Long userIdHeader,
+            @Valid @RequestBody com.fitlite.fitlite_backend.dto.ActualizarPerfilDTO request) {
+        Long userId = resolveUserId(userIdHeader);
+        return ResponseEntity.ok(usuarioService.actualizarPerfil(userId, request));
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<UsuarioResponseDTO> cambiarPassword(
+            @RequestHeader(value = "X-User-Id", required = false) Long userIdHeader,
+            @Valid @RequestBody com.fitlite.fitlite_backend.dto.CambioPasswordDTO request) {
+        Long userId = resolveUserId(userIdHeader);
+        return ResponseEntity.ok(usuarioService.cambiarPassword(userId, request));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> eliminarCuentaPropia(
+            @RequestHeader(value = "X-User-Id", required = false) Long userIdHeader,
+            @Valid @RequestBody com.fitlite.fitlite_backend.dto.EliminarCuentaDTO request) {
+        Long userId = resolveUserId(userIdHeader);
+        usuarioService.eliminarCuentaPropia(userId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/me/datos-salud")
+    public ResponseEntity<UsuarioResponseDTO> borrarDatosSalud(
+            @RequestHeader(value = "X-User-Id", required = false) Long userIdHeader) {
+        Long userId = resolveUserId(userIdHeader);
+        return ResponseEntity.ok(usuarioService.borrarDatosSalud(userId));
+    }
 }

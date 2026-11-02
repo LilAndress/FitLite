@@ -71,6 +71,9 @@ public class Usuario {
     @Column(name = "onboarding_completado", nullable = false, columnDefinition = "boolean default false")
     private Boolean onboardingCompletado = false;
 
+    @Column(name = "consentimiento_ia", nullable = false, columnDefinition = "boolean default true")
+    private Boolean consentimientoIA = true;
+
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     private List<Rutina> rutinas = new ArrayList<>();
 
