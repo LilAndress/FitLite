@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -153,10 +153,37 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
 export const PerfilPage: React.FC = () => {
   const { activeUser, setActiveUser, logout, refreshUsers } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
   const [activeSection, setActiveSection] = useState<SectionKey>('personal');
   const [mobileOpenSection, setMobileOpenSection] = useState<SectionKey | null>('personal');
+
+  // ─── Hash Navigation (e.g. /perfil#salud, /perfil#seguridad) ───
+  useEffect(() => {
+    const rawHash = location.hash.replace('#', '').toLowerCase();
+    const validSections: SectionKey[] = ['personal', 'fisico', 'entrenamiento', 'salud', 'seguridad', 'peligro'];
+
+    if (rawHash && validSections.includes(rawHash as SectionKey)) {
+      const target = rawHash as SectionKey;
+      setActiveSection(target);
+      setMobileOpenSection(target);
+
+      // Smooth scroll to target section
+      const timer = setTimeout(() => {
+        const isMobile = window.innerWidth < 1024;
+        const mobileTarget = document.getElementById(`seccion-mobile-${target}`);
+        const desktopTarget = document.getElementById('perfil-section-desktop');
+        const elementToScroll = isMobile ? mobileTarget : desktopTarget;
+
+        if (elementToScroll) {
+          elementToScroll.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [emailChanged, setEmailChanged] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -1080,7 +1107,7 @@ export const PerfilPage: React.FC = () => {
 
           {/* Right Column: Active section */}
           <ScrollReveal delay={200}>
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 lg:p-8">
+            <div id="perfil-section-desktop" className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 lg:p-8 scroll-mt-24">
               <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[var(--border)]">
                 {(() => {
                   const s = SECTIONS.find(s => s.key === activeSection)!;
@@ -1144,7 +1171,7 @@ export const PerfilPage: React.FC = () => {
             const isDirty = dirtyMap[s.key];
             return (
               <ScrollReveal key={s.key} delay={idx * 50}>
-                <div className={`bg-[var(--surface)] border rounded-2xl overflow-hidden transition-all duration-300 ${
+                <div id={`seccion-mobile-${s.key}`} className={`bg-[var(--surface)] border rounded-2xl overflow-hidden transition-all duration-300 scroll-mt-24 ${
                   isOpen ? 'border-[var(--accent-primary)]/30' : 'border-[var(--border)]'
                 }`}>
                   <button

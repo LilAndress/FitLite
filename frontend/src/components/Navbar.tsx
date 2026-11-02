@@ -1,11 +1,77 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, UserCircle2, LogOut, Sparkles, User, Settings } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Calendar, LineChart, Users, ChevronDown, UserCircle2, LogOut, Sparkles, User, Heart, Lock } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 export const Navbar: React.FC = () => {
   const { activeUser, logout } = useUser();
   const navigate = useNavigate();
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<(HTMLAnchorElement | HTMLButtonElement | null)[]>([]);
+
+  const menuOptions = [
+    { label: 'Mi perfil', path: '/perfil', icon: User },
+    { label: 'Salud y privacidad', path: '/perfil#salud', icon: Heart },
+    { label: 'Seguridad', path: '/perfil#seguridad', icon: Lock },
+    ...(activeUser?.rol === 'ADMIN' ? [{ label: 'Gestionar usuarios', path: '/usuarios', icon: Users }] : []),
+  ];
+
+  const totalMenuItems = menuOptions.length + 1; // +1 for Cerrar sesión
+
+  // Close on click outside
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen]);
+
+  // Handle focus when navigating with keyboard
+  useEffect(() => {
+    if (isMenuOpen && focusedIndex >= 0) {
+      itemRefs.current[focusedIndex]?.focus();
+    }
+  }, [isMenuOpen, focusedIndex]);
+
+  // Keyboard navigation inside dropdown menu
+  const handleMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (!isMenuOpen) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedIndex((prev) => {
+        const next = prev < 0 ? 0 : (prev + 1) % totalMenuItems;
+        itemRefs.current[next]?.focus();
+        return next;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIndex((prev) => {
+        const next = prev <= 0 ? totalMenuItems - 1 : prev - 1;
+        itemRefs.current[next]?.focus();
+        return next;
+      });
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsMenuOpen(false);
+      buttonRef.current?.focus();
+    } else if (e.key === 'Tab') {
+      setIsMenuOpen(false);
+    }
+  };
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -68,8 +134,26 @@ export const Navbar: React.FC = () => {
 
           {/* User Profile Dropdown */}
           <div className="flex items-center gap-3">
-            <div className="relative group">
-              <button className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] hover:border-[var(--accent-primary)]/50 transition-all text-left">
+            <div className="relative">
+              <button
+                ref={buttonRef}
+                type="button"
+                aria-expanded={isMenuOpen}
+                aria-haspopup="menu"
+                aria-label="Menú de usuario"
+                onClick={() => {
+                  setIsMenuOpen((prev) => !prev);
+                  setFocusedIndex(-1);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setIsMenuOpen(true);
+                    setFocusedIndex(0);
+                  }
+                }}
+                className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] hover:border-[var(--accent-primary)]/50 transition-all text-left cursor-pointer focus:outline-none focus:border-[var(--accent-primary)]"
+              >
                 <div className="w-6 h-6 rounded-full bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 flex items-center justify-center font-bold text-xs font-space">
                   {activeUser ? activeUser.nombre.charAt(0).toUpperCase() : <UserCircle2 className="w-3.5 h-3.5" strokeWidth={2} />}
                 </div>
@@ -77,75 +161,87 @@ export const Navbar: React.FC = () => {
                   <p className="font-semibold text-[var(--text-primary)]">
                     {activeUser ? activeUser.nombre : 'Sin usuario'}
                   </p>
-                  <p className="text-[10px] text-[var(--accent-secondary)] font-medium font-inter capitalize">
+                  <p className="text-[10px] text-[var(--text-secondary)] font-medium font-inter capitalize">
                     {activeUser ? (activeUser.rol === 'ADMIN' ? 'Admin' : activeUser.objetivo.toLowerCase().replace('_', ' ')) : 'Acceso'}
                   </p>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[var(--accent-primary)] transition-colors" strokeWidth={2} />
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-[var(--text-secondary)] transition-transform duration-150 ${
+                    isMenuOpen ? 'rotate-180 text-[var(--accent-primary)]' : ''
+                  }`}
+                  strokeWidth={2}
+                />
               </button>
 
               {/* Dropdown Menu */}
-              <div className="absolute right-0 mt-2 w-64 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
-                {/* Perfil del usuario activo */}
-                <div className="px-2 py-2 border-b border-[var(--border)] mb-2">
-                  <p className="text-xs font-semibold text-[var(--text-primary)] font-space truncate">
-                    {activeUser?.nombre}
-                  </p>
+              <div
+                ref={dropdownRef}
+                role="menu"
+                aria-orientation="vertical"
+                tabIndex={-1}
+                onKeyDown={handleMenuKeyDown}
+                className={`absolute right-0 mt-2 w-64 p-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl transition-all duration-150 ease-out z-50 ${
+                  isMenuOpen
+                    ? 'opacity-100 translate-y-0 pointer-events-auto visible'
+                    : 'opacity-0 -translate-y-2 pointer-events-none invisible'
+                }`}
+              >
+                {/* Perfil del usuario activo con rol */}
+                <div className="px-3 py-2.5 border-b border-[var(--border)] mb-1">
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <p className="text-xs font-semibold text-[var(--text-primary)] font-space truncate">
+                      {activeUser?.nombre}
+                    </p>
+                    <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 font-space tracking-wide">
+                      {activeUser?.rol === 'ADMIN' ? 'Admin' : activeUser?.rol === 'ENTRENADOR' ? 'Entrenador' : 'Usuario'}
+                    </span>
+                  </div>
                   <p className="text-[11px] text-[var(--text-secondary)] font-inter truncate">
                     {activeUser?.email}
                   </p>
                 </div>
 
-                {/* Enlaces de Perfil */}
-                <Link
-                  to="/perfil"
-                  className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[var(--text-primary)] hover:bg-[var(--bg-primary)] hover:text-[var(--accent-primary)] font-medium transition-colors font-inter mb-1"
-                >
-                  <span className="flex items-center gap-2">
-                    <User className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-                    <span>Ver perfil</span>
-                  </span>
-                  <span className="text-[var(--text-secondary)] text-[11px]">→</span>
-                </Link>
+                {/* Opciones del menú */}
+                <div className="space-y-0.5" role="none">
+                  {menuOptions.map((item, index) => {
+                    const Icon = item.icon;
+                    const isFocused = focusedIndex === index;
+                    return (
+                      <Link
+                        key={item.path}
+                        ref={(el) => { itemRefs.current[index] = el; }}
+                        to={item.path}
+                        role="menuitem"
+                        tabIndex={isMenuOpen ? 0 : -1}
+                        onClick={() => setIsMenuOpen(false)}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[var(--text-primary)] hover:bg-white/[0.05] transition-colors duration-150 font-medium font-inter outline-none focus:bg-white/[0.08] focus:text-[var(--accent-primary)] ${
+                          isFocused ? 'bg-white/[0.08] text-[var(--accent-primary)]' : ''
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 text-[var(--text-secondary)] stroke-[1.8] shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
 
-                <Link
-                  to="/perfil"
-                  className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[var(--text-primary)] hover:bg-[var(--bg-primary)] hover:text-[var(--accent-primary)] font-medium transition-colors font-inter mb-1"
-                >
-                  <span className="flex items-center gap-2">
-                    <Settings className="w-3.5 h-3.5 text-[var(--accent-secondary)]" />
-                    <span>Editar perfil</span>
-                  </span>
-                  <span className="text-[var(--text-secondary)] text-[11px]">→</span>
-                </Link>
-
-                {/* Acceso a Gestión de Usuarios SOLO si es ADMIN */}
-                {activeUser?.rol === 'ADMIN' && (
-                  <Link
-                    to="/usuarios"
-                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter mb-1"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Users className="w-3.5 h-3.5" />
-                      <span>Gestionar usuarios</span>
-                    </span>
-                    <span>→</span>
-                  </Link>
-                )}
+                {/* Línea separadora */}
+                <div className="my-1 border-t border-[var(--border)]" role="separator" />
 
                 {/* Cerrar sesión */}
                 <button
+                  ref={(el) => { itemRefs.current[menuOptions.length] = el; }}
+                  role="menuitem"
+                  tabIndex={isMenuOpen ? 0 : -1}
                   onClick={() => {
+                    setIsMenuOpen(false);
                     logout();
                     navigate('/');
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-red-400 hover:bg-[var(--bg-primary)] font-semibold transition-colors font-inter cursor-pointer mt-1 border-t border-[var(--border)] pt-2"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 transition-colors duration-150 font-medium font-inter cursor-pointer text-left outline-none focus:bg-[var(--accent-error)]/10"
                 >
-                  <span className="flex items-center gap-2">
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Cerrar sesión</span>
-                  </span>
-                  <span>✕</span>
+                  <LogOut className="w-4 h-4 text-[var(--accent-error)] stroke-[1.8] shrink-0" />
+                  <span>Cerrar sesión</span>
                 </button>
               </div>
             </div>
