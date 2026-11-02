@@ -15,6 +15,8 @@ import { usuariosApi } from '../api/usuarios.api';
 import { pesosCorporalesApi } from '../api/pesos.api';
 import { Modal } from '../components/Modal';
 import { ScrollReveal } from '../components/ScrollReveal';
+import { PasswordChecklist } from '../components/PasswordChecklist';
+import { passwordSchema as basePasswordSchema, areAllPasswordRulesMet } from '../lib/passwordRules';
 import type { Usuario, LugarEntrenamiento, PesoCorporalRequest } from '../types';
 
 /* ─────────────── Zod Schemas ─────────────── */
@@ -48,8 +50,8 @@ const saludSchema = z.object({
 });
 
 const passwordSchema = z.object({
-  passwordActual: z.string().min(1, 'Requerida'),
-  passwordNueva: z.string().min(8, 'Mínimo 8 caracteres'),
+  passwordActual: z.string().min(1, 'La contraseña actual es obligatoria'),
+  passwordNueva: basePasswordSchema,
   confirmarPassword: z.string().min(1, 'Confirma la nueva contraseña'),
 }).refine(d => d.passwordNueva === d.confirmarPassword, {
   message: 'Las contraseñas no coinciden',
@@ -146,22 +148,6 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   );
 };
 
-/* ─────────────── Password Strength ─────────────── */
-
-function getPasswordStrength(pw: string): { label: string; score: number; color: string } {
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 1) return { label: 'Muy débil', score: 1, color: 'var(--accent-error)' };
-  if (score === 2) return { label: 'Débil', score: 2, color: '#FF8A3D' };
-  if (score === 3) return { label: 'Aceptable', score: 3, color: '#FFC53D' };
-  if (score === 4) return { label: 'Fuerte', score: 4, color: 'var(--accent-primary)' };
-  return { label: 'Muy fuerte', score: 5, color: 'var(--accent-primary)' };
-}
-
 /* ─────────────── Main Component ─────────────── */
 
 export const PerfilPage: React.FC = () => {
@@ -180,6 +166,7 @@ export const PerfilPage: React.FC = () => {
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [newPwFocused, setNewPwFocused] = useState(false);
   const [deleteHealthModalOpen, setDeleteHealthModalOpen] = useState(false);
 
   // Unsaved changes tracking per section
@@ -370,11 +357,12 @@ export const PerfilPage: React.FC = () => {
   });
 
   // ─── PASSWORD FORM ───
-  const { register: regPw, handleSubmit: submitPw, formState: { errors: errPw }, reset: resetPw, watch: watchPw }
+  const { register: regPw, handleSubmit: submitPw, formState: { errors: errPw }, reset: resetPw, watch: watchPw, setError: setErrPw }
     = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) });
 
   const newPwValue = watchPw('passwordNueva') || '';
-  const pwStrength = getPasswordStrength(newPwValue);
+  const confirmPwValue = watchPw('confirmarPassword') || '';
+  const actualPwValue = watchPw('passwordActual') || '';
 
   const passwordMutation = useMutation({
     mutationFn: (data: PasswordForm) => usuariosApi.changePassword({
@@ -387,7 +375,26 @@ export const PerfilPage: React.FC = () => {
       setDirtyMap(m => ({ ...m, seguridad: false }));
     },
     onError: (err: any) => {
-      setToast({ message: err.response?.data?.message || 'Error al cambiar contraseña', type: 'error' });
+      const responseData = err.response?.data;
+      if (responseData?.errors) {
+        if (responseData.errors.passwordActual) {
+          setErrPw('passwordActual', { type: 'server', message: responseData.errors.passwordActual });
+        }
+        if (responseData.errors.passwordNueva) {
+          setErrPw('passwordNueva', { type: 'server', message: responseData.errors.passwordNueva });
+        }
+      } else if (responseData?.message) {
+        const msg: string = responseData.message;
+        if (msg.toLowerCase().includes('contraseña actual') || msg.toLowerCase().includes('actual')) {
+          setErrPw('passwordActual', { type: 'server', message: msg });
+        } else if (msg.toLowerCase().includes('nueva')) {
+          setErrPw('passwordNueva', { type: 'server', message: msg });
+        } else {
+          setToast({ message: msg, type: 'error' });
+        }
+      } else {
+        setToast({ message: 'Error al cambiar contraseña', type: 'error' });
+      }
     },
   });
 
@@ -838,6 +845,13 @@ export const PerfilPage: React.FC = () => {
 
   /* ─────────────── Section: Seguridad ─────────────── */
 
+  const isPasswordSaveDisabled =
+    !dirtyMap.seguridad ||
+    passwordMutation.isPending ||
+    !actualPwValue ||
+    !areAllPasswordRulesMet(newPwValue) ||
+    newPwValue !== confirmPwValue;
+
   const renderSeguridad = () => (
     <form
       onSubmit={submitPw((data) => passwordMutation.mutate(data))}
@@ -853,8 +867,12 @@ export const PerfilPage: React.FC = () => {
             className={inputClass}
             placeholder="••••••••"
           />
-          <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+          <button
+            type="button"
+            onClick={() => setShowCurrentPw(!showCurrentPw)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            aria-label={showCurrentPw ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
             {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
@@ -868,34 +886,27 @@ export const PerfilPage: React.FC = () => {
             {...regPw('passwordNueva')}
             type={showNewPw ? 'text' : 'password'}
             className={inputClass}
-            placeholder="Mínimo 8 caracteres"
+            placeholder="••••••••"
+            onFocus={() => setNewPwFocused(true)}
+            onBlur={() => setNewPwFocused(false)}
           />
-          <button type="button" onClick={() => setShowNewPw(!showNewPw)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+          <button
+            type="button"
+            onClick={() => setShowNewPw(!showNewPw)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            aria-label={showNewPw ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
             {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
         {errPw.passwordNueva && <p className={errorClass}>{errPw.passwordNueva.message}</p>}
 
-        {/* Password strength indicator */}
-        {newPwValue.length > 0 && (
-          <div className="mt-3 space-y-1.5">
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div
-                  key={i}
-                  className="h-1.5 flex-1 rounded-full transition-all duration-300"
-                  style={{
-                    backgroundColor: i <= pwStrength.score ? pwStrength.color : 'var(--border)',
-                  }}
-                />
-              ))}
-            </div>
-            <p className="text-[11px] font-inter font-medium" style={{ color: pwStrength.color }}>
-              {pwStrength.label}
-            </p>
-          </div>
-        )}
+        {/* Checklist en vivo para nueva contraseña */}
+        <PasswordChecklist
+          value={newPwValue}
+          isFocused={newPwFocused}
+          className="mt-2.5"
+        />
       </div>
 
       <div>
@@ -907,16 +918,45 @@ export const PerfilPage: React.FC = () => {
             className={inputClass}
             placeholder="Repite la nueva contraseña"
           />
-          <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+          <button
+            type="button"
+            onClick={() => setShowConfirmPw(!showConfirmPw)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            aria-label={showConfirmPw ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
             {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
-        {errPw.confirmarPassword && <p className={errorClass}>{errPw.confirmarPassword.message}</p>}
+        {/* Validación en tiempo real de coincidencia */}
+        {confirmPwValue.length > 0 && (
+          <p className={`text-[11px] mt-1.5 font-inter flex items-center gap-1.5 transition-all duration-200 ${
+            newPwValue === confirmPwValue
+              ? 'text-[var(--accent-primary)] font-medium'
+              : 'text-[var(--accent-error)] font-medium'
+          }`}>
+            {newPwValue === confirmPwValue ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Las contraseñas coinciden</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Las contraseñas no coinciden</span>
+              </>
+            )}
+          </p>
+        )}
+        {errPw.confirmarPassword && confirmPwValue.length === 0 && (
+          <p className={errorClass}>{errPw.confirmarPassword.message}</p>
+        )}
       </div>
 
       <div className="pt-2">
-        <SaveButton isPending={passwordMutation.isPending} disabled={!dirtyMap.seguridad} />
+        <SaveButton
+          isPending={passwordMutation.isPending}
+          disabled={isPasswordSaveDisabled}
+        />
       </div>
     </form>
   );

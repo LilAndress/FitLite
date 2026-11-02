@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { authApi } from '../api/auth.api';
+import { PasswordChecklist } from '../components/PasswordChecklist';
+import { passwordSchema, areAllPasswordRulesMet } from '../lib/passwordRules';
 import type { ObjetivoFisico, NivelExperiencia, LugarEntrenamiento } from '../types';
 
 const EQUIPAMIENTOS_LIST = [
@@ -85,6 +87,7 @@ export const AuthPage: React.FC = () => {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regPasswordFocused, setRegPasswordFocused] = useState(false);
 
   // Register Step 2: Physical baseline inputs
   const [regEdad, setRegEdad] = useState<string>('26');
@@ -233,8 +236,9 @@ export const AuthPage: React.FC = () => {
       setError('Por favor ingresa una contraseña.');
       return;
     }
-    if (regPassword.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres.');
+    const pwValidation = passwordSchema.safeParse(regPassword);
+    if (!pwValidation.success) {
+      setError(pwValidation.error.issues[0]?.message || 'La contraseña no cumple con todos los requisitos.');
       return;
     }
     if (!regConfirmPassword) {
@@ -529,24 +533,28 @@ export const AuthPage: React.FC = () => {
                           setRegPassword(e.target.value);
                           if (error) setError(null);
                         }}
-                        placeholder="Mínimo 4 caracteres"
+                        onFocus={() => setRegPasswordFocused(true)}
+                        onBlur={() => setRegPasswordFocused(false)}
+                        placeholder="Contraseña segura"
                         required
                         className="w-full pl-10 pr-10 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-secondary)]/50 focus:outline-none focus:border-[var(--accent-primary)] font-inter transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                        aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                    {regPassword.length > 0 && regPassword.length < 4 && (
-                      <p className="text-[11px] text-amber-400 mt-1 font-inter flex items-center gap-1 animate-fadeIn">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        <span>Mínimo 4 caracteres (llevas {regPassword.length})</span>
-                      </p>
-                    )}
+
+                    {/* Checklist de requisitos de contraseña en vivo */}
+                    <PasswordChecklist
+                      value={regPassword}
+                      isFocused={regPasswordFocused}
+                      className="mt-2.5"
+                    />
                   </div>
 
                   <div>
@@ -569,23 +577,24 @@ export const AuthPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                        aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                       >
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                     {regConfirmPassword.length > 0 && (
-                      <p className={`text-[11px] mt-1 font-inter flex items-center gap-1 animate-fadeIn ${
-                        regPassword === regConfirmPassword ? 'text-[var(--accent-primary)] font-medium' : 'text-red-400'
+                      <p className={`text-[11px] mt-1.5 font-inter flex items-center gap-1.5 transition-all duration-200 ${
+                        regPassword === regConfirmPassword ? 'text-[var(--accent-primary)] font-medium' : 'text-[var(--accent-error)] font-medium'
                       }`}>
                         {regPassword === regConfirmPassword ? (
                           <>
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                             <span>Las contraseñas coinciden</span>
                           </>
                         ) : (
                           <>
-                            <AlertCircle className="w-3.5 h-3.5" />
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                             <span>Las contraseñas no coinciden</span>
                           </>
                         )}
@@ -604,8 +613,13 @@ export const AuthPage: React.FC = () => {
                   <div className="pt-2">
                     <button
                       type="button"
+                      disabled={!areAllPasswordRulesMet(regPassword) || regPassword !== regConfirmPassword || !regConfirmPassword || regNombre.trim().length < 2 || !regEmail.trim().includes('@')}
                       onClick={() => handleNextStep()}
-                      className="w-full py-3.5 px-6 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-bold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter flex items-center justify-center gap-2 shadow-md hover:shadow-[0_0_20px_rgba(183,255,59,0.35)] cursor-pointer"
+                      className={`w-full py-3.5 px-6 rounded-full font-bold text-xs tracking-wide transition-all font-inter flex items-center justify-center gap-2 shadow-md ${
+                        areAllPasswordRulesMet(regPassword) && regPassword === regConfirmPassword && regConfirmPassword.length > 0 && regNombre.trim().length >= 2 && regEmail.trim().includes('@')
+                          ? 'bg-[var(--accent-primary)] text-[#0D1117] hover:brightness-105 active:scale-95 cursor-pointer hover:shadow-[0_0_20px_rgba(183,255,59,0.35)]'
+                          : 'bg-[var(--border)] text-[var(--text-secondary)] cursor-not-allowed opacity-60'
+                      }`}
                     >
                       <span>Continuar al perfil físico</span>
                       <ArrowRight className="w-4 h-4" />
@@ -1032,8 +1046,8 @@ export const AuthPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleRegistroSubmit()}
-                      disabled={registroMutation.isPending}
-                      className="flex-1 py-3.5 px-6 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-bold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter shadow-md text-center cursor-pointer hover:shadow-[0_0_20px_rgba(183,255,59,0.35)] flex items-center justify-center gap-2"
+                      disabled={registroMutation.isPending || !areAllPasswordRulesMet(regPassword) || regPassword !== regConfirmPassword}
+                      className="flex-1 py-3.5 px-6 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-bold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-inter shadow-md text-center cursor-pointer hover:shadow-[0_0_20px_rgba(183,255,59,0.35)] flex items-center justify-center gap-2"
                     >
                       {registroMutation.isPending ? (
                         <>
@@ -1042,7 +1056,7 @@ export const AuthPage: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <span>Completar Registro y Calibrar IA</span>
+                          <span>Crear cuenta y Calibrar IA</span>
                           <Sparkles className="w-4 h-4" />
                         </>
                       )}
