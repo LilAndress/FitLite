@@ -28,6 +28,7 @@ export const CoachIaFloatingWidget: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isCoachPage = location.pathname === '/coach';
+  const isSesionPage = location.pathname.startsWith('/sesion');
 
   // Cargar historial la primera vez que se abre
   useEffect(() => {
@@ -47,8 +48,8 @@ export const CoachIaFloatingWidget: React.FC = () => {
     }
   }, [mensajes, cargando, isOpen]);
 
-  // Si estamos en login, registro, landing o ya en /coach, no mostrar el widget flotante
-  if (!activeUser || isCoachPage || location.pathname === '/login' || location.pathname === '/registro' || location.pathname === '/landing') {
+  // Si estamos en login, registro, landing, bienvenida o ya en /coach, no mostrar el widget flotante
+  if (!activeUser || isCoachPage || location.pathname === '/login' || location.pathname === '/registro' || location.pathname === '/landing' || location.pathname === '/bienvenida') {
     return null;
   }
 
@@ -93,12 +94,21 @@ export const CoachIaFloatingWidget: React.FC = () => {
     }
   };
 
+  // En pantalla de entrenamiento (/sesion/:id), se ubica en la esquina inferior izquierda en desktop
+  // y arriba de la barra de descanso en mobile, evitando que tape el temporizador y sus controles
+  const widgetPositionClass = isSesionPage
+    ? isOpen
+      ? 'bottom-4 left-4 right-4 sm:left-6 sm:bottom-6 sm:right-auto'
+      : 'bottom-28 right-4 sm:bottom-6 sm:left-6 sm:right-auto'
+    : 'bottom-6 right-6';
+
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className={`fixed z-50 transition-all duration-300 ease-out ${widgetPositionClass}`}>
       {/* Botón flotante cerrado */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
+          title="Consultar al Coach IA"
           className="group relative flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-[#0D1117] font-bold text-xs shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
         >
           <div className="w-5 h-5 flex items-center justify-center">
@@ -120,7 +130,7 @@ export const CoachIaFloatingWidget: React.FC = () => {
               </div>
               <div>
                 <h4 className="text-xs font-bold font-space text-[var(--text-primary)]">Coach FitLite IA</h4>
-                <p className="text-[10px] text-emerald-400 font-inter">Gemini Flash · Adaptado a tu salud</p>
+                <p className="text-[10px] text-emerald-400 font-inter">En línea · Adaptado a tu salud</p>
               </div>
             </div>
 

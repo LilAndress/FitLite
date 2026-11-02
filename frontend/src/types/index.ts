@@ -269,3 +269,68 @@ export interface ChatResponse {
   advertencia?: string;
 }
 
+export type EsfuerzoSesion = 'FACIL' | 'JUSTO' | 'DURO';
+
+export interface EjercicioSesionFeedback {
+  ejercicioId: number;
+  ejercicioNombre: string;
+  seriesRealizadas: number;
+  repeticionesRealizadas: number;
+  pesoRealizado: number;
+  saltado: boolean;
+  esfuerzo?: EsfuerzoSesion;
+}
+
+export interface SugerenciaSesionRequest {
+  usuarioId: number;
+  rutinaId: number;
+  esfuerzoGeneral?: EsfuerzoSesion;
+  sintioDolor: boolean;
+  ejercicios: EjercicioSesionFeedback[];
+}
+
+export interface SugerenciaSobrecarga {
+  rutinaId: number;
+  ejercicioId: number;
+  ejercicioNombre: string;
+  pesoActual: number;
+  pesoPropuesto: number;
+  repeticionesActuales: number;
+  repeticionesPropuestas: number;
+  tipo: 'INCREMENTO_CARGA' | 'INCREMENTO_REPETICIONES' | 'CONSOLIDACION';
+  mensaje: string;
+  justificacion: string;
+}
+
+export interface WorkoutSet {
+  numero: number;
+  peso: number;
+  repeticiones: number;
+  completada: boolean;
+  backendProgresoId?: number;
+}
+
+export interface WorkoutExercise {
+  ejercicioId: number;
+  ejercicioCatalogoId?: number;
+  nombre: string;
+  grupoMuscular?: GrupoMuscular;
+  descripcionTecnica?: string;
+  series: WorkoutSet[];
+  dolor: boolean;
+  esfuerzo?: EsfuerzoSesion;
+  saltado: boolean;
+}
+
+export interface WorkoutSessionState {
+  rutinaId: number;
+  rutinaNombre: string;
+  usuarioId: number;
+  fecha: string;
+  startedAt: number;
+  completedAt?: number;
+  currentExerciseIndex: number;
+  ejercicios: WorkoutExercise[];
+  isFinished: boolean;
+}
+

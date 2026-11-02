@@ -1,5 +1,13 @@
 import { apiClient } from './client';
-import type { Rutina, RutinaRequest, RutinaIaBorradorRequest, RutinaIaBorradorResponse, RutinaIaGuardarRequest } from '../types';
+import type { 
+  Rutina, 
+  RutinaRequest, 
+  RutinaIaBorradorRequest, 
+  RutinaIaBorradorResponse, 
+  RutinaIaGuardarRequest,
+  SugerenciaSesionRequest,
+  SugerenciaSobrecarga
+} from '../types';
 
 export const rutinasApi = {
   getById: async (id: number): Promise<Rutina> => {
@@ -45,6 +53,11 @@ export const rutinasApi = {
 
   guardarBorradorIa: async (request: RutinaIaGuardarRequest): Promise<Rutina> => {
     const { data } = await apiClient.post<Rutina>('/rutinas/ia/guardar', request);
+    return data;
+  },
+
+  getSugerenciaSobrecarga: async (rutinaId: number, feedback: SugerenciaSesionRequest): Promise<SugerenciaSobrecarga | null> => {
+    const { data } = await apiClient.post<SugerenciaSobrecarga | null>(`/rutinas/${rutinaId}/sugerencia-sobrecarga`, feedback);
     return data;
   },
 };

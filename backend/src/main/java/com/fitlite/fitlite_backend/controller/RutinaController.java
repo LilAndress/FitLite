@@ -2,6 +2,8 @@ package com.fitlite.fitlite_backend.controller;
 
 import com.fitlite.fitlite_backend.dto.RutinaRequestDTO;
 import com.fitlite.fitlite_backend.dto.RutinaResponseDTO;
+import com.fitlite.fitlite_backend.dto.SugerenciaSesionRequestDTO;
+import com.fitlite.fitlite_backend.dto.SugerenciaSobrecargaDTO;
 import com.fitlite.fitlite_backend.service.RutinaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +52,14 @@ public class RutinaController {
     public ResponseEntity<RutinaResponseDTO> cambiarEstado(@PathVariable Long id,
                                                           @RequestParam boolean activa) {
         return ResponseEntity.ok(rutinaService.cambiarEstado(id, activa));
+    }
+
+    @PostMapping("/{id}/sugerencia-sobrecarga")
+    public ResponseEntity<SugerenciaSobrecargaDTO> sugerenciaSobrecarga(
+            @PathVariable Long id,
+            @RequestBody(required = false) SugerenciaSesionRequestDTO feedback) {
+        SugerenciaSobrecargaDTO sugerencia = rutinaService.generarSugerenciaSesion(id, feedback);
+        return ResponseEntity.ok(sugerencia);
     }
 
     @DeleteMapping("/{id}")

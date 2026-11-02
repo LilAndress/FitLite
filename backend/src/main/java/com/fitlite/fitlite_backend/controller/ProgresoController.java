@@ -25,6 +25,12 @@ public class ProgresoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/upsert")
+    public ResponseEntity<ProgresoResponseDTO> upsertProgreso(@Valid @RequestBody ProgresoRequestDTO request) {
+        ProgresoResponseDTO response = progresoService.upsertProgreso(request);
+        return ResponseEntity.ok(response);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ProgresoResponseDTO> actualizarProgreso(@PathVariable Long id,
                                                                  @Valid @RequestBody ProgresoRequestDTO request) {

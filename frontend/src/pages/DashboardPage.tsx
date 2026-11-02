@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { 
   Dumbbell, 
@@ -36,6 +36,8 @@ import { Badge } from '../components/Badge';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { CircularProgress } from '../components/CircularProgress';
 import { Modal } from '../components/Modal';
+import { StartWorkoutButton } from '../components/StartWorkoutButton';
+import { PesoCorporalModal } from '../components/PesoCorporalModal';
 import type { LugarEntrenamiento } from '../types';
 
 const EQUIPAMIENTOS_LIST = [
@@ -58,14 +60,9 @@ const ZONAS_MOLESTIA_LIST = [
 
 export const DashboardPage: React.FC = () => {
   const { activeUser, users, refreshUsers } = useUser();
-  const queryClient = useQueryClient();
 
   // Estado para modal de actualización rápida de peso
   const [isPesoModalOpen, setIsPesoModalOpen] = useState(false);
-  const [pesoInput, setPesoInput] = useState<string>('');
-  const [fechaInput, setFechaInput] = useState<string>(() => new Date().toISOString().split('T')[0]);
-  const [notasInput, setNotasInput] = useState<string>('');
-  const [pesoError, setPesoError] = useState<string | null>(null);
 
   // Estado para modal de Perfil de Salud & IA
   const [isSaludModalOpen, setIsSaludModalOpen] = useState(false);
@@ -164,44 +161,7 @@ export const DashboardPage: React.FC = () => {
     enabled: Boolean(activeUser),
   });
 
-  // Mutación para actualizar peso rápido desde dashboard
-  const updatePesoMutation = useMutation({
-    mutationFn: async ({ peso, fecha, notas }: { peso: number; fecha?: string; notas?: string }) => {
-      if (!activeUser) throw new Error('No user selected');
-      return usuariosApi.actualizarPeso(activeUser.id, { peso, fecha, notas });
-    },
-    onSuccess: async () => {
-      await refreshUsers();
-      queryClient.invalidateQueries({ queryKey: ['pesosCorporales', activeUser?.id] });
-      setIsPesoModalOpen(false);
-      setPesoInput('');
-      setNotasInput('');
-      setPesoError(null);
-    },
-    onError: (err: any) => {
-      setPesoError(err.response?.data?.message || 'Error al actualizar el peso corporal');
-    },
-  });
-
-  const handleGuardarPeso = (e: React.FormEvent) => {
-    e.preventDefault();
-    const pesoNum = parseFloat(pesoInput);
-    if (isNaN(pesoNum) || pesoNum <= 0) {
-      setPesoError('Ingresa un peso válido superior a 0 kg');
-      return;
-    }
-    updatePesoMutation.mutate({
-      peso: pesoNum,
-      fecha: fechaInput || undefined,
-      notas: notasInput.trim() || undefined,
-    });
-  };
-
   const abrirModalPeso = () => {
-    setPesoInput(activeUser?.pesoActual ? String(activeUser.pesoActual) : '');
-    setFechaInput(new Date().toISOString().split('T')[0]);
-    setNotasInput('');
-    setPesoError(null);
     setIsPesoModalOpen(true);
   };
 
@@ -287,20 +247,22 @@ export const DashboardPage: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          <StartWorkoutButton variant="primary" />
+          <Link
+            to="/progreso?registrar=true"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/50 text-xs font-semibold font-inter active:scale-95 transition-all"
+            title="Registro manual rápido"
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+            <span>Registro rápido</span>
+          </Link>
           <button
             onClick={abrirModalPeso}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--accent-primary)]/40 text-[var(--accent-primary)] text-xs font-semibold hover:bg-[var(--accent-primary)]/10 active:scale-95 transition-all font-inter"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--accent-primary)]/40 text-[var(--accent-primary)] text-xs font-semibold hover:bg-[var(--accent-primary)]/10 active:scale-95 transition-all font-inter cursor-pointer"
           >
             <Scale className="w-3.5 h-3.5" strokeWidth={2.2} />
             Actualizar peso
           </button>
-          <Link
-            to="/progreso"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter"
-          >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-            Registrar sesión
-          </Link>
           <Link
             to="/rutinas"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] text-xs font-medium hover:border-[var(--accent-primary)]/50 active:scale-95 transition-all font-inter"
@@ -919,84 +881,11 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Modal de Actualización Rápida de Peso Corporal */}
-      <Modal
+      <PesoCorporalModal
         isOpen={isPesoModalOpen}
-        onClose={() => {
-          setIsPesoModalOpen(false);
-          setPesoError(null);
-        }}
-        title="Actualizar peso corporal"
-      >
-        <form onSubmit={handleGuardarPeso} className="space-y-4">
-          <p className="text-xs text-[var(--text-secondary)] font-inter">
-            Ingresa tu peso corporal actual. Se actualizará en tu perfil y quedará asentado en el historial de pesajes.
-          </p>
-
-          {pesoError && (
-            <div className="p-3 rounded-xl bg-[var(--accent-error)]/10 border border-[var(--accent-error)]/30 text-[var(--accent-error)] text-xs font-inter">
-              {pesoError}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
-              Peso actual (kg) *
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              value={pesoInput}
-              onChange={(e) => setPesoInput(e.target.value)}
-              placeholder="Ej. 74.8"
-              required
-              autoFocus
-              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
-              Fecha del pesaje
-            </label>
-            <input
-              type="date"
-              value={fechaInput}
-              onChange={(e) => setFechaInput(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
-              Observaciones (Opcional)
-            </label>
-            <input
-              type="text"
-              value={notasInput}
-              onChange={(e) => setNotasInput(e.target.value)}
-              placeholder="Ej. En ayunas al despertar"
-              className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-3">
-            <button
-              type="button"
-              onClick={() => setIsPesoModalOpen(false)}
-              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={updatePesoMutation.isPending}
-              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter"
-            >
-              {updatePesoMutation.isPending ? 'Guardando...' : 'Guardar y registrar'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => setIsPesoModalOpen(false)}
+        historialPesos={historialPesos}
+      />
 
       {/* Modal de Configuración de Perfil de Salud & IA */}
       <Modal

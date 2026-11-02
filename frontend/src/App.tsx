@@ -13,6 +13,7 @@ import { PerfilPage } from './pages/PerfilPage';
 import { CoachIaFloatingWidget } from './components/CoachIaFloatingWidget';
 
 import { BienvenidaPage } from './pages/BienvenidaPage';
+import { SesionEntrenamientoPage } from './pages/SesionEntrenamientoPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,6 +80,7 @@ function AppContent() {
           <Route path="/login" element={<AuthPage />} />
           <Route path="/registro" element={<AuthPage />} />
           <Route path="/rutinas" element={<ProtectedRoute><RutinasPage /></ProtectedRoute>} />
+          <Route path="/sesion/:id" element={<ProtectedRoute><SesionEntrenamientoPage /></ProtectedRoute>} />
           <Route path="/progreso" element={<ProtectedRoute><ProgresoPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
           <Route path="/coach" element={<ProtectedRoute><CoachIaPage /></ProtectedRoute>} />
@@ -89,12 +91,9 @@ function AppContent() {
       {!isAuthRoute && <CoachIaFloatingWidget />}
       {!hideAppNavbar && (
         <footer className="border-t border-[var(--border)] bg-[var(--surface)] py-5 text-center text-xs text-[var(--text-secondary)]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
             <p className="font-space font-medium text-[var(--text-secondary)]">
               FitLite Pro · © {new Date().getFullYear()} Plataforma deportiva inteligente
-            </p>
-            <p className="text-[var(--text-secondary)] font-inter">
-              Sobrecarga progresiva · <span className="text-[var(--accent-primary)] font-semibold font-space">Spring Boot & React</span>
             </p>
           </div>
         </footer>

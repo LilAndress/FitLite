@@ -65,6 +65,56 @@ public class ProgresoService {
     }
 
     @Transactional
+    public ProgresoResponseDTO upsertProgreso(ProgresoRequestDTO request) {
+        Usuario usuario = usuarioRepository.findById(request.getUsuarioId())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + request.getUsuarioId()));
+
+        EjercicioCatalogo catalogo = null;
+        if (request.getEjercicioCatalogoId() != null) {
+            catalogo = ejercicioCatalogoRepository.findById(request.getEjercicioCatalogoId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Ejercicio del catálogo no encontrado con ID: " + request.getEjercicioCatalogoId()));
+        } else if (request.getEjercicioId() != null) {
+            catalogo = ejercicioCatalogoRepository.findById(request.getEjercicioId()).orElse(null);
+            if (catalogo == null) {
+                catalogo = rutinaEjercicioRepository.findById(request.getEjercicioId())
+                        .map(RutinaEjercicio::getEjercicioCatalogo)
+                        .orElseThrow(() -> new ResourceNotFoundException("Ejercicio no encontrado con ID: " + request.getEjercicioId()));
+            }
+        } else {
+            throw new IllegalArgumentException("Debe proporcionar un ID de ejercicio válido");
+        }
+
+        java.time.LocalDate fecha = request.getFecha() != null ? request.getFecha() : java.time.LocalDate.now();
+
+        java.util.Optional<Progreso> existenteOpt = progresoRepository.findByUsuarioIdAndEjercicioCatalogoIdAndFecha(
+                usuario.getId(), catalogo.getId(), fecha);
+
+        if (existenteOpt.isPresent()) {
+            Progreso existente = existenteOpt.get();
+            existente.setSeriesRealizadas(request.getSeriesRealizadas());
+            existente.setRepeticionesRealizadas(request.getRepeticionesRealizadas());
+            existente.setPesoRealizado(request.getPesoRealizado());
+            if (request.getOrigen() != null) {
+                existente.setOrigen(request.getOrigen());
+            }
+            Progreso actualizado = progresoRepository.save(existente);
+            return mapToResponse(actualizado);
+        } else {
+            Progreso nuevo = Progreso.builder()
+                    .fecha(fecha)
+                    .seriesRealizadas(request.getSeriesRealizadas())
+                    .repeticionesRealizadas(request.getRepeticionesRealizadas())
+                    .pesoRealizado(request.getPesoRealizado())
+                    .usuario(usuario)
+                    .ejercicioCatalogo(catalogo)
+                    .origen(request.getOrigen() != null ? request.getOrigen() : com.fitlite.fitlite_backend.enums.OrigenProgreso.REGISTRADO)
+                    .build();
+            Progreso guardado = progresoRepository.save(nuevo);
+            return mapToResponse(guardado);
+        }
+    }
+
+    @Transactional
     public ProgresoResponseDTO actualizarProgreso(Long id, ProgresoRequestDTO request) {
         Progreso progreso = buscarEntidadPorId(id);
 

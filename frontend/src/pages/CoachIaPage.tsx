@@ -157,7 +157,7 @@ export const CoachIaPage: React.FC = () => {
               <h1 className="text-xl font-bold font-space text-[var(--text-primary)]">Coach FitLite IA</h1>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-space flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                Gemini Free
+                En línea
               </span>
             </div>
             <p className="text-xs text-[var(--text-secondary)] font-inter">
@@ -425,7 +425,7 @@ export const CoachIaPage: React.FC = () => {
               </button>
             </form>
             <p className="text-[10px] text-[var(--text-secondary)] text-center mt-2 font-inter">
-              Coach FitLite IA utiliza Google Gemini. El contenido es orientativo y adaptado a tu perfil deportivo.
+              Coach FitLite IA brinda orientación personalizada y adaptada a tu perfil deportivo.
             </p>
           </div>
         </section>

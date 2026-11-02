@@ -28,6 +28,7 @@ import type { Rutina, RutinaIaBorradorResponse, Ejercicio } from '../types';
 import { Modal } from '../components/Modal';
 import { Badge } from '../components/Badge';
 import { EjercicioCombobox } from '../components/EjercicioCombobox';
+import { StartWorkoutButton } from '../components/StartWorkoutButton';
 
 // Zod schemas
 const rutinaSchema = z.object({
@@ -754,14 +755,17 @@ export const RutinasPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Primary Pill Button */}
-        <button
-          onClick={() => setIsRutinaModalOpen(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all self-start sm:self-auto font-inter"
-        >
-          <Plus className="w-4 h-4" strokeWidth={2.5} />
-          Nueva rutina
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+          <StartWorkoutButton variant="primary" />
+          <button
+            onClick={() => setIsRutinaModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/50 text-xs font-semibold font-inter active:scale-95 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Nueva rutina
+          </button>
+        </div>
       </div>
 
       {/* Routine Cards List */}
@@ -1007,7 +1011,10 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 self-end sm:self-center">
+        <div className="flex items-center gap-2 flex-wrap self-end sm:self-center">
+          {/* Botón Empezar / Continuar rutina específico de la tarjeta */}
+          <StartWorkoutButton variant="card" specificRoutine={rutina} />
+
           {/* Secondary Pill Button: Estado */}
           <button
             onClick={onToggleStatus}
