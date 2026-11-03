@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -19,7 +19,8 @@ import {
   Scale,
   Calendar,
   FileText,
-  Pencil
+  Pencil,
+  Trophy
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -38,6 +39,8 @@ import { progresosApi } from '../api/progresos.api';
 import { pesosCorporalesApi } from '../api/pesos.api';
 import { rutinasApi } from '../api/rutinas.api';
 import { ejerciciosApi } from '../api/ejercicios.api';
+import { fechaLocalISO } from '../lib/dateUtils';
+import { isPesoCorporalExercise } from '../lib/exerciseUtils';
 import type { Ejercicio, Progreso, PesoCorporal } from '../types';
 import { Modal } from '../components/Modal';
 import { StatCard } from '../components/StatCard';
@@ -55,8 +58,6 @@ const progresoSchema = z.object({
 });
 
 type ProgresoFormValues = z.infer<typeof progresoSchema>;
-
-const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 export const ProgresoPage: React.FC = () => {
   const { activeUser, refreshUsers } = useUser();
@@ -85,8 +86,9 @@ export const ProgresoPage: React.FC = () => {
   const [editingProgresoId, setEditingProgresoId] = useState<number | null>(null);
   const [isPesoModalOpen, setIsPesoModalOpen] = useState(false);
   const [editingPesoId, setEditingPesoId] = useState<number | null>(null);
-  const [filtroEjercicioId, setFiltroEjercicioId] = useState<string>('all');
+  const [filtroEjercicioId, setFiltroEjercicioId] = useState<string>('');
   const [progresoError, setProgresoError] = useState<string | null>(null);
+  const [esPesoCorporalChecked, setEsPesoCorporalChecked] = useState(false);
 
   // Queries
   const { data: progresos = [], isLoading: isLoadingProgresos } = useQuery({
@@ -137,7 +139,6 @@ export const ProgresoPage: React.FC = () => {
   });
 
   // Forms setup
-  const todayStr = getTodayStr();
   const {
     register: registerProgreso,
     handleSubmit: handleSubmitProgreso,
@@ -148,7 +149,7 @@ export const ProgresoPage: React.FC = () => {
   } = useForm<ProgresoFormValues>({
     resolver: zodResolver(progresoSchema),
     defaultValues: {
-      fecha: todayStr,
+      fecha: fechaLocalISO(),
       seriesRealizadas: 4,
       repeticionesRealizadas: 10,
       pesoRealizado: 20,
@@ -191,7 +192,7 @@ export const ProgresoPage: React.FC = () => {
       setIsModalOpen(true);
       if (ejId) {
         resetProgreso({
-          fecha: getTodayStr(),
+          fecha: fechaLocalISO(),
           ejercicioId: Number(ejId),
           seriesRealizadas: seriesParam ? Number(seriesParam) : 4,
           repeticionesRealizadas: repsParam ? Number(repsParam) : 10,
@@ -255,8 +256,9 @@ export const ProgresoPage: React.FC = () => {
   const handleOpenCreateProgreso = () => {
     setEditingProgresoId(null);
     setProgresoError(null);
+    setEsPesoCorporalChecked(false);
     resetProgreso({
-      fecha: getTodayStr(),
+      fecha: fechaLocalISO(),
       seriesRealizadas: 4,
       repeticionesRealizadas: 10,
       pesoRealizado: 20,
@@ -267,12 +269,14 @@ export const ProgresoPage: React.FC = () => {
   const handleOpenEditProgreso = (p: Progreso) => {
     setEditingProgresoId(p.id);
     setProgresoError(null);
+    const isBW = isPesoCorporalExercise(p.ejercicioNombre);
+    setEsPesoCorporalChecked(isBW);
     resetProgreso({
       fecha: p.fecha,
       ejercicioId: p.ejercicioCatalogoId || p.ejercicioId,
       seriesRealizadas: p.seriesRealizadas,
       repeticionesRealizadas: p.repeticionesRealizadas,
-      pesoRealizado: p.pesoRealizado || 0,
+      pesoRealizado: p.pesoRealizado ?? 0,
     });
     setIsModalOpen(true);
   };
@@ -314,28 +318,114 @@ export const ProgresoPage: React.FC = () => {
     );
   }
 
-  // Filtered progress for exercises
-  const filteredProgresos =
-    filtroEjercicioId === 'all'
-      ? progresos
-      : progresos.filter(
-          (p) =>
-            p.ejercicioId === Number(filtroEjercicioId) ||
-            (p.ejercicioCatalogoId && p.ejercicioCatalogoId === Number(filtroEjercicioId))
-        );
+  // 1. Ejercicios únicos disponibles ordenados por el más recientemente ejecutado
+  const distinctExercises = useMemo(() => {
+    const map = new Map<string, { id: string; nombre: string; grupoMuscular?: string }>();
 
-  const chartDataProgresos = [...filteredProgresos]
-    .reverse()
-    .map((p) => ({
-      fecha: p.fecha.slice(5),
-      peso: p.pesoRealizado || 0,
-      reps: p.repeticionesRealizadas,
-      series: p.seriesRealizadas,
-      ejercicio: p.ejercicioNombre,
+    // Primero los ejercicios que tienen progresos registrados, ordenados del más reciente al más antiguo
+    const sortedProgresosDesc = [...progresos].sort(
+      (a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id
+    );
+    sortedProgresosDesc.forEach((p) => {
+      const key = String(p.ejercicioCatalogoId || p.ejercicioId);
+      if (!map.has(key) && p.ejercicioNombre) {
+        map.set(key, { id: key, nombre: p.ejercicioNombre, grupoMuscular: p.grupoMuscular });
+      }
+    });
+
+    // Luego ejercicios de rutinas activas que aún no tengan progresos
+    ejerciciosDisponibles.forEach((ej) => {
+      const key = String(ej.ejercicioCatalogoId || ej.id);
+      if (!map.has(key)) {
+        map.set(key, { id: key, nombre: ej.nombre, grupoMuscular: ej.grupoMuscular });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [progresos, ejerciciosDisponibles]);
+
+  // Inicializar o ajustar filtroEjercicioId para que comience con el más reciente (NUNCA todos mezclados)
+  useEffect(() => {
+    if (distinctExercises.length > 0) {
+      if (!filtroEjercicioId || filtroEjercicioId === 'all' || !distinctExercises.some((e) => e.id === filtroEjercicioId)) {
+        setFiltroEjercicioId(distinctExercises[0].id);
+      }
+    }
+  }, [distinctExercises, filtroEjercicioId]);
+
+  const selectedExercise = useMemo(() => {
+    return distinctExercises.find((e) => e.id === filtroEjercicioId) || distinctExercises[0] || null;
+  }, [distinctExercises, filtroEjercicioId]);
+
+  const isSelectedExerciseBW = useMemo(() => {
+    return selectedExercise ? isPesoCorporalExercise(selectedExercise.nombre) : false;
+  }, [selectedExercise]);
+
+  // Progresos filtrados solo para el ejercicio seleccionado (UN ejercicio a la vez)
+  const filteredProgresos = useMemo(() => {
+    if (!selectedExercise) return [];
+    const targetId = selectedExercise.id;
+    return progresos.filter(
+      (p) =>
+        p.pesoRealizado !== null &&
+        p.pesoRealizado !== undefined &&
+        (String(p.ejercicioCatalogoId) === targetId || String(p.ejercicioId) === targetId)
+    );
+  }, [progresos, selectedExercise]);
+
+  // Gráfica de progreso: ignora valores nulos, muestra un solo ejercicio a la vez en orden cronológico
+  const chartDataProgresos = useMemo(() => {
+    return [...filteredProgresos]
+      .filter((p) => p.pesoRealizado !== null && p.pesoRealizado !== undefined && (isSelectedExerciseBW || p.pesoRealizado > 0))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id - b.id)
+      .map((p) => ({
+        fecha: p.fecha.slice(5),
+        peso: p.pesoRealizado,
+        reps: p.repeticionesRealizadas,
+        series: p.seriesRealizadas,
+        ejercicio: p.ejercicioNombre,
+      }));
+  }, [filteredProgresos, isSelectedExerciseBW]);
+
+  // Récords recientes: los 3 últimos récords, cada uno con su ejercicio (ignora valores nulos)
+  const recentRecords = useMemo(() => {
+    const validProgresos = progresos.filter(
+      (p) => p.pesoRealizado !== null && p.pesoRealizado !== undefined && p.pesoRealizado > 0
+    );
+
+    // Mapeo por ejercicio para calcular su récord máximo histórico y fecha
+    const map = new Map<string, { peso: number; fecha: string; reps: number; series: number }>();
+
+    // Orden ascendente para simular la consecución del récord
+    const asc = [...validProgresos].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id - b.id);
+    asc.forEach((p) => {
+      const key = p.ejercicioNombre || `Ejercicio ${p.ejercicioCatalogoId || p.ejercicioId}`;
+      const prev = map.get(key);
+      if (!prev || p.pesoRealizado > prev.peso) {
+        map.set(key, {
+          peso: p.pesoRealizado,
+          fecha: p.fecha,
+          reps: p.repeticionesRealizadas,
+          series: p.seriesRealizadas,
+        });
+      }
+    });
+
+    const list = Array.from(map.entries()).map(([nombre, item]) => ({
+      ejercicioNombre: nombre,
+      peso: item.peso,
+      fecha: item.fecha,
+      seriesReps: `${item.series}s × ${item.reps}r`,
     }));
 
-  const maxPesoEjercicio = progresos.length > 0 ? Math.max(...progresos.map((p) => p.pesoRealizado || 0)) : 0;
-  const totalSeries = progresos.reduce((acc, p) => acc + p.seriesRealizadas, 0);
+    // Ordenar los récords con los más recientes primero
+    list.sort((a, b) => b.fecha.localeCompare(a.fecha));
+    return list.slice(0, 3);
+  }, [progresos]);
+
+  const totalSeries = progresos
+    .filter((p) => p.seriesRealizadas !== null && p.seriesRealizadas !== undefined)
+    .reduce((acc, p) => acc + p.seriesRealizadas, 0);
 
   // Body weight calculations & chart
   const chartDataPesos = [...historialPesos]
@@ -428,16 +518,56 @@ export const ProgresoPage: React.FC = () => {
         /* VISTA 1: CARGAS DE EJERCICIO */
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <StatCard
-              title="Carga máxima"
-              value={maxPesoEjercicio}
-              decimals={1}
-              suffix=" kg"
-              icon={Award}
-              variation={{ type: 'positive', text: '+Sobrecarga' }}
-              subtitle="Mayor peso superado en entrenamiento"
-              isPrimary={true}
-            />
+            {/* Tarjeta Récords recientes (reemplaza Carga máxima) */}
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group hover:border-[var(--accent-primary)]/40 transition-all">
+              <div>
+                <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]/50">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border border-[var(--accent-primary)]/20 flex items-center justify-center">
+                      <Trophy className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-[var(--text-primary)] font-space tracking-tight">
+                        Récords recientes
+                      </h3>
+                      <p className="text-[10px] text-[var(--text-secondary)] font-inter">
+                        3 últimos récords con su ejercicio
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold font-space bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30">
+                    PRs
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {recentRecords.length === 0 ? (
+                    <p className="text-xs text-[var(--text-secondary)] font-inter py-3 text-center">
+                      Aún no hay récords registrados.
+                    </p>
+                  ) : (
+                    recentRecords.map((rec, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2 rounded-xl bg-[var(--bg-primary)]/60 border border-[var(--border)]/60 flex items-center justify-between text-xs gap-2"
+                      >
+                        <div className="truncate min-w-0">
+                          <p className="font-semibold text-[var(--text-primary)] font-space truncate text-[11px]">
+                            {rec.ejercicioNombre}
+                          </p>
+                          <p className="text-[10px] text-[var(--text-secondary)] font-inter truncate">
+                            {rec.fecha} {rec.seriesReps ? `· ${rec.seriesReps}` : ''}
+                          </p>
+                        </div>
+                        <span className="font-bold font-space text-[var(--accent-primary)] text-xs tabular-nums shrink-0">
+                          {rec.peso} kg
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
 
             <StatCard
               title="Series acumuladas"
@@ -465,10 +595,10 @@ export const ProgresoPage: React.FC = () => {
               <div>
                 <h2 className="text-sm font-bold text-[var(--text-primary)] font-space flex items-center gap-2 tracking-tight">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
-                  Curva de sobrecarga progresiva
+                  Curva de progreso: {selectedExercise?.nombre || 'Ejercicio'}
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
-                  Progresión lineal de kilajes levantados
+                  Progresión lineal de cargas (un ejercicio a la vez)
                 </p>
               </div>
 
@@ -477,11 +607,10 @@ export const ProgresoPage: React.FC = () => {
                 <select
                   value={filtroEjercicioId}
                   onChange={(e) => setFiltroEjercicioId(e.target.value)}
-                  className="px-3 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
+                  className="px-3 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter cursor-pointer"
                 >
-                  <option value="all">Todos los ejercicios ({ejerciciosDisponibles.length})</option>
-                  {ejerciciosDisponibles.map((ej) => (
-                    <option key={ej.id} value={ej.ejercicioCatalogoId || ej.id}>
+                  {distinctExercises.map((ej) => (
+                    <option key={ej.id} value={ej.id}>
                       {ej.nombre} {ej.grupoMuscular ? `· ${ej.grupoMuscular}` : ''}
                     </option>
                   ))}
@@ -827,6 +956,10 @@ export const ProgresoPage: React.FC = () => {
         )}
         <form onSubmit={handleSubmitProgreso((data) => {
           setProgresoError(null);
+          if (!esPesoCorporalChecked && Number(data.pesoRealizado) <= 0) {
+            setProgresoError('No se permite guardar 0 kg salvo en ejercicios marcados como peso corporal.');
+            return;
+          }
           if (editingProgresoId) {
             updateProgresoMutation.mutate({ id: editingProgresoId, data });
           } else {
@@ -835,10 +968,31 @@ export const ProgresoPage: React.FC = () => {
         })} className="space-y-4">
           <RegistroRapidoCombobox
             value={watchProgreso('ejercicioId')}
-            onChange={(catId) => setValueProgreso('ejercicioId', catId, { shouldValidate: true })}
+            onChange={(catId, nombre) => {
+              setValueProgreso('ejercicioId', catId, { shouldValidate: true });
+              const isBW = isPesoCorporalExercise(nombre);
+              setEsPesoCorporalChecked(isBW);
+            }}
             activeRoutines={rutinas.filter((r) => r.activa)}
             error={errorsProgreso.ejercicioId?.message}
           />
+
+          {/* Checkbox para ejercicio marcado como peso corporal */}
+          <div className="flex items-center gap-2 px-1 py-1">
+            <input
+              type="checkbox"
+              id="pesoCorporalProgresoCheck"
+              checked={esPesoCorporalChecked}
+              onChange={(e) => setEsPesoCorporalChecked(e.target.checked)}
+              className="rounded bg-[var(--bg-primary)] border-[var(--border)] text-[var(--accent-primary)] focus:ring-0 cursor-pointer"
+            />
+            <label
+              htmlFor="pesoCorporalProgresoCheck"
+              className="text-xs text-[var(--text-secondary)] font-inter cursor-pointer select-none"
+            >
+              Ejercicio marcado como peso corporal / autocarga (permite 0 kg)
+            </label>
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-[var(--text-secondary)] font-inter mb-1.5">
@@ -846,6 +1000,7 @@ export const ProgresoPage: React.FC = () => {
             </label>
             <input
               type="date"
+              max={fechaLocalISO()}
               {...registerProgreso('fecha')}
               className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter"
             />

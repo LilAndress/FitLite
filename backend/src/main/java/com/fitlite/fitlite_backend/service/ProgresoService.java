@@ -50,6 +50,8 @@ public class ProgresoService {
             throw new IllegalArgumentException("Ya existe un registro para " + catalogo.getNombre() + " en la fecha " + request.getFecha() + ". Puedes editar el registro existente.");
         }
 
+        validarPesoRealizado(request.getPesoRealizado(), catalogo);
+
         Progreso progreso = Progreso.builder()
                 .fecha(request.getFecha())
                 .seriesRealizadas(request.getSeriesRealizadas())
@@ -83,6 +85,8 @@ public class ProgresoService {
         } else {
             throw new IllegalArgumentException("Debe proporcionar un ID de ejercicio válido");
         }
+
+        validarPesoRealizado(request.getPesoRealizado(), catalogo);
 
         java.time.LocalDate fecha = request.getFecha() != null ? request.getFecha() : java.time.LocalDate.now();
 
@@ -156,6 +160,7 @@ public class ProgresoService {
             progreso.setRepeticionesRealizadas(request.getRepeticionesRealizadas());
         }
         if (request.getPesoRealizado() != null) {
+            validarPesoRealizado(request.getPesoRealizado(), catalogo);
             progreso.setPesoRealizado(request.getPesoRealizado());
         }
         if (request.getOrigen() != null) {
@@ -206,6 +211,24 @@ public class ProgresoService {
     public void eliminarProgreso(Long id) {
         Progreso progreso = buscarEntidadPorId(id);
         progresoRepository.delete(progreso);
+    }
+
+    private boolean esEjercicioPesoCorporal(EjercicioCatalogo catalogo) {
+        if (catalogo == null) return false;
+        String texto = ((catalogo.getNombre() != null ? catalogo.getNombre() : "") + " " +
+                (catalogo.getDescripcionTecnica() != null ? catalogo.getDescripcionTecnica() : "")).toLowerCase();
+        return texto.contains("corporal") || texto.contains("autocarga") || texto.contains("calistenia")
+                || texto.contains("dominada") || texto.contains("flexion") || texto.contains("fondo")
+                || texto.contains("push-up") || texto.contains("chin-up") || texto.contains("pull-up")
+                || texto.contains("plancha") || texto.contains("abdominal") || texto.contains("crunch")
+                || texto.contains("escalador") || texto.contains("burpee") || texto.contains("vacio abdominal")
+                || texto.contains("salto a la comba");
+    }
+
+    private void validarPesoRealizado(Double peso, EjercicioCatalogo catalogo) {
+        if (peso != null && peso <= 0 && !esEjercicioPesoCorporal(catalogo)) {
+            throw new IllegalArgumentException("No se permite guardar 0 kg salvo en ejercicios marcados como peso corporal.");
+        }
     }
 
     public Progreso buscarEntidadPorId(Long id) {

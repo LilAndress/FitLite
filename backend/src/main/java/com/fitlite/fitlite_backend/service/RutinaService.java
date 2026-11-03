@@ -4,10 +4,12 @@ import com.fitlite.fitlite_backend.dto.RutinaRequestDTO;
 import com.fitlite.fitlite_backend.dto.RutinaResponseDTO;
 import com.fitlite.fitlite_backend.dto.SugerenciaSesionRequestDTO;
 import com.fitlite.fitlite_backend.dto.SugerenciaSobrecargaDTO;
+import com.fitlite.fitlite_backend.entity.Progreso;
 import com.fitlite.fitlite_backend.entity.Rutina;
 import com.fitlite.fitlite_backend.entity.RutinaEjercicio;
 import com.fitlite.fitlite_backend.entity.Usuario;
 import com.fitlite.fitlite_backend.exception.ResourceNotFoundException;
+import com.fitlite.fitlite_backend.repository.ProgresoRepository;
 import com.fitlite.fitlite_backend.repository.RutinaRepository;
 import com.fitlite.fitlite_backend.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class RutinaService {
 
     private final RutinaRepository rutinaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ProgresoRepository progresoRepository;
 
     @Transactional
     public RutinaResponseDTO crearRutina(RutinaRequestDTO request) {
@@ -133,8 +136,39 @@ public class RutinaService {
                     if ("FACIL".equalsIgnoreCase(esfuerzo) || "JUSTO".equalsIgnoreCase(esfuerzo)) {
                         double pesoBase = ejFeedback.getPesoRealizado() > 0 ? ejFeedback.getPesoRealizado() : (re.getPesoObjetivo() != null ? re.getPesoObjetivo() : 0.0);
                         double nuevoPeso = pesoBase + 2.5;
-
                         String nombreEj = re.getEjercicioCatalogo() != null ? re.getEjercicioCatalogo().getNombre() : "Ejercicio";
+
+                        // Contar sesiones registradas para este ejercicio
+                        Long catalogoId = re.getEjercicioCatalogo() != null ? re.getEjercicioCatalogo().getId() : null;
+                        List<Progreso> historial = (feedback.getUsuarioId() != null && catalogoId != null)
+                                ? progresoRepository.findByUsuarioIdAndEjercicioCatalogoIdOrderByFechaDesc(feedback.getUsuarioId(), catalogoId)
+                                : List.of();
+
+                        long sesionesPrevias = historial.stream().map(Progreso::getFecha).distinct().count();
+
+                        if (sesionesPrevias < 2) {
+                            int restantes = (int) Math.max(1, 2 - sesionesPrevias);
+                            return SugerenciaSobrecargaDTO.builder()
+                                    .rutinaId(rutinaId)
+                                    .ejercicioId(re.getId())
+                                    .ejercicioNombre(nombreEj)
+                                    .pesoActual(pesoBase)
+                                    .pesoPropuesto(pesoBase)
+                                    .repeticionesActuales(re.getRepeticionesObjetivo())
+                                    .repeticionesPropuestas(re.getRepeticionesObjetivo())
+                                    .tipo("CONSOLIDACION")
+                                    .tieneDatosSuficientes(false)
+                                    .sesionesRestantes(restantes)
+                                    .mensaje("Aún necesito " + restantes + " sesiones más de este ejercicio para recomendarte")
+                                    .justificacion("Se requieren al menos 2 sesiones registradas de este ejercicio para prescribir progresiones seguras.")
+                                    .datosJustificacion(sesionesPrevias + " de 2 sesiones completadas")
+                                    .build();
+                        }
+
+                        int seriesObj = re.getSeriesObjetivo() > 0 ? re.getSeriesObjetivo() : 4;
+                        int repsObj = re.getRepeticionesObjetivo() > 0 ? re.getRepeticionesObjetivo() : 10;
+                        String justifData = seriesObj + "x" + repsObj + " con " + pesoBase + " kg en tus últimas 2 sesiones";
+
                         return SugerenciaSobrecargaDTO.builder()
                                 .rutinaId(rutinaId)
                                 .ejercicioId(re.getId())
@@ -144,8 +178,11 @@ public class RutinaService {
                                 .repeticionesActuales(re.getRepeticionesObjetivo())
                                 .repeticionesPropuestas(re.getRepeticionesObjetivo())
                                 .tipo("INCREMENTO_CARGA")
+                                .tieneDatosSuficientes(true)
+                                .sesionesRestantes(0)
                                 .mensaje("El motor de IA detectó solvencia técnica y esfuerzo " + ("FACIL".equalsIgnoreCase(esfuerzo) ? "Fácil" : "Justo") + " en " + nombreEj + ".")
                                 .justificacion("Incrementar +2.5 kg en la próxima sesión para estimular la adaptación y sobrecarga progresiva.")
+                                .datosJustificacion(justifData)
                                 .build();
                     }
                 }
@@ -156,6 +193,37 @@ public class RutinaService {
             RutinaEjercicio re = rutina.getEjercicios().get(0);
             double pesoBase = re.getPesoObjetivo() != null ? re.getPesoObjetivo() : 20.0;
             String nombreEj = re.getEjercicioCatalogo() != null ? re.getEjercicioCatalogo().getNombre() : "Ejercicio principal";
+
+            Long catalogoId = re.getEjercicioCatalogo() != null ? re.getEjercicioCatalogo().getId() : null;
+            List<Progreso> historial = (feedback.getUsuarioId() != null && catalogoId != null)
+                    ? progresoRepository.findByUsuarioIdAndEjercicioCatalogoIdOrderByFechaDesc(feedback.getUsuarioId(), catalogoId)
+                    : List.of();
+
+            long sesionesPrevias = historial.stream().map(Progreso::getFecha).distinct().count();
+
+            if (sesionesPrevias < 2) {
+                int restantes = (int) Math.max(1, 2 - sesionesPrevias);
+                return SugerenciaSobrecargaDTO.builder()
+                        .rutinaId(rutinaId)
+                        .ejercicioId(re.getId())
+                        .ejercicioNombre(nombreEj)
+                        .pesoActual(pesoBase)
+                        .pesoPropuesto(pesoBase)
+                        .repeticionesActuales(re.getRepeticionesObjetivo())
+                        .repeticionesPropuestas(re.getRepeticionesObjetivo())
+                        .tipo("CONSOLIDACION")
+                        .tieneDatosSuficientes(false)
+                        .sesionesRestantes(restantes)
+                        .mensaje("Aún necesito " + restantes + " sesiones más de este ejercicio para recomendarte")
+                        .justificacion("Se requieren al menos 2 sesiones registradas de este ejercicio para prescribir progresiones seguras.")
+                        .datosJustificacion(sesionesPrevias + " de 2 sesiones completadas")
+                        .build();
+            }
+
+            int seriesObj = re.getSeriesObjetivo() > 0 ? re.getSeriesObjetivo() : 4;
+            int repsObj = re.getRepeticionesObjetivo() > 0 ? re.getRepeticionesObjetivo() : 10;
+            String justifData = seriesObj + "x" + repsObj + " con " + pesoBase + " kg en tus últimas 2 sesiones";
+
             return SugerenciaSobrecargaDTO.builder()
                     .rutinaId(rutinaId)
                     .ejercicioId(re.getId())
@@ -165,8 +233,11 @@ public class RutinaService {
                     .repeticionesActuales(re.getRepeticionesObjetivo())
                     .repeticionesPropuestas(re.getRepeticionesObjetivo())
                     .tipo("INCREMENTO_CARGA")
+                    .tieneDatosSuficientes(true)
+                    .sesionesRestantes(0)
                     .mensaje("Completaste la sesión con excelente rendimiento y tolerancia al esfuerzo.")
                     .justificacion("Incremento prescrito de +2.5 kg en " + nombreEj + " para continuar tu progresión.")
+                    .datosJustificacion(justifData)
                     .build();
         }
 

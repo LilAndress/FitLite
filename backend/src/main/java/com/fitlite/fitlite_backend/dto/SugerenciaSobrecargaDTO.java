@@ -20,4 +20,7 @@ public class SugerenciaSobrecargaDTO {
     private String tipo; // "INCREMENTO_CARGA", "INCREMENTO_REPETICIONES", "CONSOLIDACION"
     private String mensaje;
     private String justificacion;
+    private String datosJustificacion;
+    private Integer sesionesRestantes;
+    private Boolean tieneDatosSuficientes;
 }

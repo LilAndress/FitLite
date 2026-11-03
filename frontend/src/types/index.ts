@@ -300,6 +300,29 @@ export interface SugerenciaSobrecarga {
   tipo: 'INCREMENTO_CARGA' | 'INCREMENTO_REPETICIONES' | 'CONSOLIDACION';
   mensaje: string;
   justificacion: string;
+  datosJustificacion?: string;
+  sesionesRestantes?: number;
+  tieneDatosSuficientes?: boolean;
+}
+
+export interface CompletedSessionSummary {
+  rutinaId: number;
+  rutinaNombre: string;
+  usuarioId: number;
+  fecha: string;
+  completedAt: number;
+  duracionSegundos: number;
+  volumenTotalKg: number;
+  seriesCompletadas: number;
+  seriesPlaneadas: number;
+  esAdicional?: boolean;
+  ejercicios: {
+    ejercicioId: number;
+    nombre: string;
+    seriesCompletadas: number;
+    pesoMaximo: number;
+    repeticionesMaximas: number;
+  }[];
 }
 
 export interface WorkoutSet {
@@ -332,5 +355,6 @@ export interface WorkoutSessionState {
   currentExerciseIndex: number;
   ejercicios: WorkoutExercise[];
   isFinished: boolean;
+  esAdicional?: boolean;
 }
 

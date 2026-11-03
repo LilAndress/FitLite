@@ -42,8 +42,10 @@ public class PesoCorporalService {
         List<PesoCorporal> ordenados = pesoCorporalRepository.findByUsuarioIdOrderByFechaDesc(usuario.getId());
         if (!ordenados.isEmpty()) {
             usuario.setPesoActual(ordenados.get(0).getPeso());
-            usuarioRepository.save(usuario);
+        } else {
+            usuario.setPesoActual(guardado.getPeso());
         }
+        usuarioRepository.save(usuario);
 
         return mapToResponse(guardado);
     }

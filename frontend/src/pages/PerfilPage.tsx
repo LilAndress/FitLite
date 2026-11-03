@@ -17,6 +17,7 @@ import { Modal } from '../components/Modal';
 import { ScrollReveal } from '../components/ScrollReveal';
 import { PasswordChecklist } from '../components/PasswordChecklist';
 import { passwordSchema as basePasswordSchema, areAllPasswordRulesMet } from '../lib/passwordRules';
+import { fechaLocalISO } from '../lib/dateUtils';
 import type { Usuario, LugarEntrenamiento, PesoCorporalRequest } from '../types';
 
 /* ─────────────── Zod Schemas ─────────────── */
@@ -114,7 +115,7 @@ const LUGAR_LABELS: Record<string, string> = {
   CALISTENIA_PARQUE: 'Parque / Calistenia',
 };
 
-const getTodayStr = () => new Date().toISOString().split('T')[0];
+const getTodayStr = () => fechaLocalISO();
 
 /* ─────────────── Toast Component ─────────────── */
 
@@ -1237,7 +1238,7 @@ export const PerfilPage: React.FC = () => {
           </div>
           <div>
             <label className={labelClass}>Fecha *</label>
-            <input {...regPeso('fecha')} type="date" className={inputClass} />
+            <input {...regPeso('fecha')} type="date" max={fechaLocalISO()} className={inputClass} />
             {errPeso.fecha && <p className={errorClass}>{errPeso.fecha.message}</p>}
           </div>
           <div>

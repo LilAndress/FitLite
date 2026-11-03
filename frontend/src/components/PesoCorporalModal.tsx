@@ -4,6 +4,7 @@ import { AlertCircle, Scale, CheckCircle2 } from 'lucide-react';
 import { Modal } from './Modal';
 import { useUser } from '../context/UserContext';
 import { pesosCorporalesApi } from '../api/pesos.api';
+import { fechaLocalISO } from '../lib/dateUtils';
 import type { PesoCorporal } from '../types';
 
 interface PesoCorporalModalProps {
@@ -24,10 +25,8 @@ export const PesoCorporalModal: React.FC<PesoCorporalModalProps> = ({
   const { activeUser, refreshUsers } = useUser();
   const queryClient = useQueryClient();
 
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
-
   const [pesoVal, setPesoVal] = useState('');
-  const [fechaVal, setFechaVal] = useState(getTodayStr());
+  const [fechaVal, setFechaVal] = useState(fechaLocalISO());
   const [notasVal, setNotasVal] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState(false);
@@ -49,7 +48,7 @@ export const PesoCorporalModal: React.FC<PesoCorporalModalProps> = ({
         setNotasVal(editingPeso.notas || '');
       } else {
         setPesoVal(ultimoPesoNum ? String(ultimoPesoNum) : '');
-        setFechaVal(getTodayStr());
+        setFechaVal(fechaLocalISO());
         setNotasVal('');
       }
     }
@@ -263,6 +262,7 @@ export const PesoCorporalModal: React.FC<PesoCorporalModalProps> = ({
             </label>
             <input
               type="date"
+              max={fechaLocalISO()}
               value={fechaVal}
               onChange={(e) => setFechaVal(e.target.value)}
               required

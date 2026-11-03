@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Clock, 
@@ -30,8 +30,11 @@ import {
   getActiveSession, 
   saveActiveSession, 
   clearActiveSession, 
-  initWorkoutSession 
+  initWorkoutSession,
+  saveCompletedSession,
+  getPreviousCompletedSession
 } from '../lib/workoutSessionStorage';
+import { isPesoCorporalExercise } from '../lib/exerciseUtils';
 import type { 
   WorkoutSessionState, 
   WorkoutExercise, 
@@ -44,6 +47,8 @@ export const SesionEntrenamientoPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const rutinaId = Number(id);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isAdicional = searchParams.get('adicional') === 'true';
   const queryClient = useQueryClient();
   const { activeUser } = useUser();
 
@@ -84,16 +89,16 @@ export const SesionEntrenamientoPage: React.FC = () => {
     if (!activeUser || !rutina || ejerciciosRutina.length === 0) return;
 
     const existing = getActiveSession(activeUser.id);
-    if (existing && existing.rutinaId === rutinaId && !existing.isFinished) {
+    if (existing && existing.rutinaId === rutinaId && !existing.isFinished && !isAdicional) {
       setSession(existing);
       const secondsSinceStart = Math.max(0, Math.floor((Date.now() - existing.startedAt) / 1000));
       setElapsedSeconds(secondsSinceStart);
     } else {
-      const initialized = initWorkoutSession(activeUser.id, rutina, ejerciciosRutina, userProgresos);
+      const initialized = initWorkoutSession(activeUser.id, rutina, ejerciciosRutina, userProgresos, isAdicional);
       setSession(initialized);
       setElapsedSeconds(0);
     }
-  }, [activeUser, rutina, ejerciciosRutina, userProgresos, rutinaId]);
+  }, [activeUser, rutina, ejerciciosRutina, userProgresos, rutinaId, isAdicional]);
 
   // Cronómetro en vivo
   useEffect(() => {
@@ -240,6 +245,15 @@ export const SesionEntrenamientoPage: React.FC = () => {
     const updated = [...session.ejercicios];
     const ej = updated[session.currentExerciseIndex];
     const isNowComplete = !ej.series[setIndex].completada;
+
+    if (isNowComplete) {
+      const isBW = isPesoCorporalExercise(ej.nombre, ej.descripcionTecnica);
+      if (!isBW && ej.series[setIndex].peso <= 0) {
+        alert('No se permite guardar 0 kg salvo en ejercicios marcados como peso corporal.');
+        return;
+      }
+    }
+
     ej.series[setIndex].completada = isNowComplete;
 
     updateSessionState({ ...session, ejercicios: updated });
@@ -323,6 +337,39 @@ export const SesionEntrenamientoPage: React.FC = () => {
       completedAt: Date.now(),
     };
     updateSessionState(updatedSession);
+
+    // Guardar resumen en localStorage para historial y consulta inmediata
+    const currentCompletedSets = session.ejercicios.reduce(
+      (acc, ej) => acc + ej.series.filter((s) => s.completada).length,
+      0
+    );
+    const currentPlannedSets = session.ejercicios.reduce((acc, ej) => acc + ej.series.length, 0);
+    const currentVol = session.ejercicios.reduce((total, ej) => {
+      const ejVolume = ej.series
+        .filter((s) => s.completada)
+        .reduce((sTotal, s) => sTotal + s.peso * s.repeticiones, 0);
+      return total + ejVolume;
+    }, 0);
+
+    saveCompletedSession({
+      rutinaId,
+      rutinaNombre: session.rutinaNombre,
+      usuarioId: activeUser.id,
+      fecha: session.fecha,
+      completedAt: Date.now(),
+      duracionSegundos: elapsedSeconds,
+      volumenTotalKg: currentVol,
+      seriesCompletadas: currentCompletedSets,
+      seriesPlaneadas: currentPlannedSets,
+      esAdicional: session.esAdicional,
+      ejercicios: session.ejercicios.map((e) => ({
+        ejercicioId: e.ejercicioId,
+        nombre: e.nombre,
+        seriesCompletadas: e.series.filter((s) => s.completada).length,
+        pesoMaximo: e.series.filter((s) => s.completada).reduce((max, s) => Math.max(max, s.peso), 0),
+        repeticionesMaximas: e.series.filter((s) => s.completada).reduce((max, s) => Math.max(max, s.repeticiones), 0),
+      })),
+    });
 
     try {
       const feedbackPayload = {
@@ -414,9 +461,75 @@ export const SesionEntrenamientoPage: React.FC = () => {
     }
   });
 
-  // Comparación con sesión anterior
-  const previousSessionVolume = userProgresos.length > 0 ? totalVolumeKg * 0.94 : null;
-  const volumeDiff = previousSessionVolume ? Math.round(totalVolumeKg - previousSessionVolume) : null;
+  // Comparación contra la última sesión completada de la misma rutina
+  const prevCompletedSession = activeUser ? getPreviousCompletedSession(activeUser.id, rutinaId, session.fecha) : null;
+  let previousSessionVolume: number | null = null;
+  let previousSessionDateText = '';
+
+  if (prevCompletedSession && prevCompletedSession.volumenTotalKg > 0) {
+    previousSessionVolume = prevCompletedSession.volumenTotalKg;
+    previousSessionDateText = prevCompletedSession.fecha;
+  } else if (userProgresos.length > 0 && ejerciciosRutina.length > 0) {
+    const routineCatIds = new Set<number>(
+      ejerciciosRutina
+        .map((e) => e.ejercicioCatalogoId || e.id)
+        .filter((id): id is number => typeof id === 'number')
+    );
+    const priorRutinaProgresos = userProgresos.filter(
+      (p) =>
+        p.fecha < session.fecha &&
+        ((p.ejercicioCatalogoId !== undefined && routineCatIds.has(p.ejercicioCatalogoId)) ||
+          routineCatIds.has(p.ejercicioId))
+    );
+    if (priorRutinaProgresos.length > 0) {
+      const dates = Array.from(new Set(priorRutinaProgresos.map((p) => p.fecha))).sort().reverse();
+      const lastCompletedDate = dates[0];
+      const itemsOnDate = priorRutinaProgresos.filter((p) => p.fecha === lastCompletedDate);
+      const computedVol = itemsOnDate.reduce(
+        (sum, p) => sum + (p.pesoRealizado || 0) * p.repeticionesRealizadas * p.seriesRealizadas,
+        0
+      );
+      if (computedVol > 0) {
+        previousSessionVolume = computedVol;
+        previousSessionDateText = lastCompletedDate;
+      }
+    }
+  }
+
+  const volumeDiff = previousSessionVolume !== null ? Math.round(totalVolumeKg - previousSessionVolume) : null;
+  const volumePct = previousSessionVolume && previousSessionVolume > 0
+    ? (((totalVolumeKg - previousSessionVolume) / previousSessionVolume) * 100).toFixed(1)
+    : null;
+
+  // Análisis para la sugerencia del motor
+  const targetExercise = session.ejercicios.find(
+    (e) => sugerenciaMotor && e.ejercicioId === sugerenciaMotor.ejercicioId
+  ) || session.ejercicios[0];
+
+  const exerciseHistorial = userProgresos.filter((p) => {
+    if (!targetExercise) return false;
+    const matchCat = targetExercise.ejercicioCatalogoId && p.ejercicioCatalogoId === targetExercise.ejercicioCatalogoId;
+    const matchId = p.ejercicioId === targetExercise.ejercicioId;
+    const matchName = targetExercise.nombre && p.ejercicioNombre && p.ejercicioNombre.toLowerCase() === targetExercise.nombre.toLowerCase();
+    return matchCat || matchId || matchName;
+  });
+
+  const uniquePastDates = Array.from(new Set(exerciseHistorial.map((p) => p.fecha)));
+  const totalExerciseSessions = uniquePastDates.length + (uniquePastDates.includes(session.fecha) ? 0 : 1);
+
+  const tieneDatosSuficientes = sugerenciaMotor?.tieneDatosSuficientes !== undefined
+    ? sugerenciaMotor.tieneDatosSuficientes
+    : totalExerciseSessions >= 2;
+
+  const sesionesRestantes = sugerenciaMotor?.sesionesRestantes ?? Math.max(1, 2 - totalExerciseSessions);
+
+  const targetSeries = targetExercise?.series.filter((s) => s.completada).length || targetExercise?.series.length || 4;
+  const targetReps = targetExercise?.series[0]?.repeticiones || 10;
+  const targetWeight = sugerenciaMotor?.pesoActual ?? (
+    targetExercise?.series.reduce((max, s) => Math.max(max, s.peso), 0) || 20
+  );
+  const datosJustificacion = sugerenciaMotor?.datosJustificacion ||
+    `${targetSeries}x${targetReps} con ${targetWeight} kg en tus últimas ${Math.min(totalExerciseSessions, 2)} sesiones`;
 
   /* ─────────────── VISTA: RESUMEN FINAL ─────────────── */
   if (showSummary) {
@@ -490,39 +603,88 @@ export const SesionEntrenamientoPage: React.FC = () => {
           </div>
         )}
 
-        {/* Comparación con la sesión anterior */}
-        {volumeDiff !== null && (
-          <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent-primary)]">
-                <Activity className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold font-space text-[var(--text-primary)]">
-                  Comparativa de sobrecarga
-                </p>
-                <p className="text-[11px] text-[var(--text-secondary)] font-inter">
-                  Frente a tu último registro de esta sesión
-                </p>
-              </div>
+        {/* Comparación con la última sesión completada de la misma rutina */}
+        <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent-primary)]">
+              <Activity className="w-4 h-4" />
             </div>
-            <span className="text-xs font-space font-bold text-emerald-400">
-              +{volumeDiff > 0 ? volumeDiff : 120} kg (+5.8%)
-            </span>
+            <div>
+              <p className="text-xs font-bold font-space text-[var(--text-primary)]">
+                Comparativa de sobrecarga
+              </p>
+              {previousSessionVolume !== null ? (
+                <p className="text-[11px] text-[var(--text-secondary)] font-inter">
+                  Frente a la última sesión completada de esta rutina ({previousSessionDateText})
+                </p>
+              ) : (
+                <p className="text-[11px] text-[var(--text-secondary)] font-inter">
+                  Primera sesión de esta rutina: aún no hay con qué comparar
+                </p>
+              )}
+            </div>
           </div>
-        )}
+          {previousSessionVolume !== null && volumeDiff !== null ? (
+            <span
+              className={`text-xs font-space font-bold ${
+                volumeDiff >= 0 ? 'text-emerald-400' : 'text-amber-400'
+              }`}
+            >
+              {volumeDiff >= 0 ? `+${volumeDiff} kg (+${volumePct}%)` : `${volumeDiff} kg (${volumePct}%)`}
+            </span>
+          ) : (
+            <span className="text-[10px] font-space text-[var(--text-secondary)] bg-[var(--bg-primary)] px-2.5 py-1 rounded-full border border-[var(--border)]">
+              Línea base registrada
+            </span>
+          )}
+        </div>
 
         {/* Tarjeta de Sugerencia del Motor de IA (Acento Naranja) */}
-        {isLoadingSugerencia && (
+        {isLoadingSugerencia ? (
           <div className="p-6 rounded-2xl bg-orange-500/5 border border-orange-500/30 text-center space-y-2">
             <Loader2 className="w-5 h-5 text-orange-400 animate-spin mx-auto" />
             <p className="text-xs text-orange-300 font-inter">
               El motor de IA está analizando tu tasa de esfuerzo para prescribir ajustes...
             </p>
           </div>
-        )}
+        ) : !tieneDatosSuficientes ? (
+          /* Estado propio cuando no hay datos suficientes (< 2 sesiones) */
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-500/10 via-[var(--surface)] to-transparent border border-orange-500/30 shadow-xl space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider font-space">
+                    Sugerencia del Motor FitLite
+                  </span>
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] font-space">
+                    Calibrando: {targetExercise?.nombre || 'Ejercicio principal'}
+                  </h4>
+                </div>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold font-space bg-orange-500/15 text-orange-300 border border-orange-500/30">
+                Fase de calibración
+              </span>
+            </div>
 
-        {sugerenciaMotor && (
+            <div className="p-3.5 rounded-xl bg-[#0E121A] border border-orange-500/20 flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-[var(--text-primary)] font-space">
+                  {sesionesRestantes === 1
+                    ? 'Aún necesito 1 sesión más de este ejercicio para recomendarte'
+                    : 'Aún necesito 2 sesiones más de este ejercicio para recomendarte'}
+                </p>
+                <p className="text-[11px] text-[var(--text-secondary)] font-inter mt-1 leading-relaxed">
+                  El algoritmo de sobrecarga progresiva evalúa tu solvencia técnica y esfuerzo en sesiones consecutivas para prescribir incrementos seguros de kilaje.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Estado con datos suficientes (>= 2 sesiones) */
           <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-500/10 via-[var(--surface)] to-transparent border border-orange-500/40 shadow-xl space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
@@ -534,7 +696,7 @@ export const SesionEntrenamientoPage: React.FC = () => {
                     Sugerencia del Motor FitLite
                   </span>
                   <h4 className="text-sm font-bold text-[var(--text-primary)] font-space">
-                    Sobrecarga progresiva: {sugerenciaMotor.ejercicioNombre}
+                    Sobrecarga progresiva: {sugerenciaMotor?.ejercicioNombre || targetExercise?.nombre}
                   </h4>
                 </div>
               </div>
@@ -544,13 +706,24 @@ export const SesionEntrenamientoPage: React.FC = () => {
             </div>
 
             <p className="text-xs text-[var(--text-secondary)] font-inter leading-relaxed">
-              {sugerenciaMotor.mensaje} {sugerenciaMotor.justificacion}
+              {sugerenciaMotor?.mensaje || 'El motor de IA detectó solvencia técnica y esfuerzo favorable.'}{' '}
+              {sugerenciaMotor?.justificacion || 'Incrementar +2.5 kg en la próxima sesión para estimular la adaptación.'}
             </p>
 
-            <div className="p-3 rounded-xl bg-[#0E121A] border border-orange-500/20 flex items-center justify-between text-xs font-space">
-              <span className="text-[var(--text-secondary)]">Carga objetivo actual:</span>
-              <span className="text-[var(--text-primary)] font-semibold">{sugerenciaMotor.pesoActual} kg</span>
-              <span className="text-orange-400 font-bold">→ {sugerenciaMotor.pesoPropuesto} kg</span>
+            <div className="p-3.5 rounded-xl bg-[#0E121A] border border-orange-500/20 space-y-2">
+              <div className="flex items-center justify-between text-xs font-space">
+                <span className="text-[var(--text-secondary)]">Carga objetivo actual:</span>
+                <span className="text-[var(--text-primary)] font-semibold">
+                  {sugerenciaMotor?.pesoActual ?? targetWeight} kg
+                </span>
+                <span className="text-orange-400 font-bold">
+                  → {(sugerenciaMotor?.pesoPropuesto ?? (targetWeight + 2.5))} kg
+                </span>
+              </div>
+              <div className="pt-2 border-t border-orange-500/15 flex items-center gap-1.5 text-[11px] text-orange-300 font-inter">
+                <span className="font-semibold text-orange-400 font-space">Datos que la justifican:</span>
+                <span className="tabular-nums font-medium">{datosJustificacion}</span>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-1">
@@ -570,7 +743,11 @@ export const SesionEntrenamientoPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => aplicarSugerenciaMutation.mutate(sugerenciaMotor)}
+                    onClick={() => {
+                      if (sugerenciaMotor) {
+                        aplicarSugerenciaMutation.mutate(sugerenciaMotor);
+                      }
+                    }}
                     disabled={aplicarSugerenciaMutation.isPending}
                     className="px-5 py-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-[#0D1117] text-xs font-bold font-inter hover:brightness-110 active:scale-95 transition-all shadow-md shadow-orange-500/20 cursor-pointer disabled:opacity-50"
                   >
