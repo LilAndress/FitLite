@@ -306,18 +306,6 @@ export const ProgresoPage: React.FC = () => {
     },
   });
 
-  if (!activeUser) {
-    return (
-      <div className="max-w-4xl mx-auto py-20 px-4 text-center">
-        <AlertCircle className="w-12 h-12 text-[var(--accent-secondary)] mx-auto mb-3" strokeWidth={1.5} />
-        <h2 className="text-xl font-bold text-[var(--text-primary)] font-space mb-2 tracking-tight">Selecciona un perfil</h2>
-        <p className="text-[var(--text-secondary)] text-xs font-inter">
-          Selecciona un usuario en la barra superior para ver y registrar su progreso deportivo.
-        </p>
-      </div>
-    );
-  }
-
   // 1. Ejercicios únicos disponibles ordenados por el más recientemente ejecutado
   const distinctExercises = useMemo(() => {
     const map = new Map<string, { id: string; nombre: string; grupoMuscular?: string }>();
@@ -439,6 +427,18 @@ export const ProgresoPage: React.FC = () => {
   const pesoActual = activeUser?.pesoActual ?? (historialPesos.length > 0 ? historialPesos[0].peso : null);
   const pesoInicial = historialPesos.length > 0 ? historialPesos[historialPesos.length - 1].peso : pesoActual;
   const variacionTotal = pesoActual !== null && pesoInicial !== null ? Number((pesoActual - pesoInicial).toFixed(1)) : null;
+
+  if (!activeUser) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 px-4 text-center">
+        <AlertCircle className="w-12 h-12 text-[var(--accent-secondary)] mx-auto mb-3" strokeWidth={1.5} />
+        <h2 className="text-xl font-bold text-[var(--text-primary)] font-space mb-2 tracking-tight">Selecciona un perfil</h2>
+        <p className="text-[var(--text-secondary)] text-xs font-inter">
+          Selecciona un usuario en la barra superior para ver y registrar su progreso deportivo.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

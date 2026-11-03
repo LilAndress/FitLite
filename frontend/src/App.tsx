@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { UserProvider, useUser } from './context/UserContext';
+import { ChatProvider } from './context/ChatContext';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './pages/LandingPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -44,6 +45,7 @@ function AppContent() {
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/registro' || location.pathname === '/bienvenida';
   const isLandingRoute = location.pathname === '/landing' || (location.pathname === '/' && !activeUser);
   const hideAppNavbar = isAuthRoute || isLandingRoute;
+  const hideFooter = hideAppNavbar || location.pathname === '/coach' || location.pathname.startsWith('/sesion');
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col font-inter">
@@ -89,7 +91,7 @@ function AppContent() {
         </Routes>
       </main>
       {!isAuthRoute && <CoachIaFloatingWidget />}
-      {!hideAppNavbar && (
+      {!hideFooter && (
         <footer className="border-t border-[var(--border)] bg-[var(--surface)] py-5 text-center text-xs text-[var(--text-secondary)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
             <p className="font-space font-medium text-[var(--text-secondary)]">
@@ -106,9 +108,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <UserProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
+        <ChatProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </ChatProvider>
       </UserProvider>
     </QueryClientProvider>
   );

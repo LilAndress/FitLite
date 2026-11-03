@@ -84,6 +84,9 @@ export const RutinasPage: React.FC = () => {
     if (params.get('crear') === 'true') {
       setIsRutinaModalOpen(true);
       setIaStep('manual');
+    } else if (params.get('ia') === 'true' || params.get('generador') === 'ia') {
+      setIsRutinaModalOpen(true);
+      setIaStep('ia-form');
     }
   }, [location.search]);
 
