@@ -441,18 +441,18 @@ export const ProgresoPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
       {/* Header with Switcher Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-[var(--text-primary)] font-space flex items-center gap-2.5 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] font-space flex items-center gap-2.5 tracking-tight">
               {activeTab === 'cargas' ? (
-                <LineChartIcon className="w-6 h-6 text-[var(--accent-primary)]" strokeWidth={2} />
+                <LineChartIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--accent-primary)] shrink-0" strokeWidth={2} />
               ) : (
-                <Scale className="w-6 h-6 text-[var(--accent-primary)]" strokeWidth={2} />
+                <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--accent-primary)] shrink-0" strokeWidth={2} />
               )}
-              {activeTab === 'cargas' ? 'Métricas y sobrecarga de cargas' : 'Seguimiento de peso corporal'}
+              <span className="truncate">{activeTab === 'cargas' ? 'Métricas y sobrecarga' : 'Seguimiento de peso corporal'}</span>
             </h1>
           </div>
           <p className="text-xs text-[var(--text-secondary)] font-inter mt-1">
@@ -462,53 +462,55 @@ export const ProgresoPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
           {/* Segmented Control Tabs */}
-          <div className="flex items-center p-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-inter">
+          <div className="grid grid-cols-2 sm:flex items-center p-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-inter w-full sm:w-auto">
             <button
               onClick={() => setActiveTab('cargas')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-medium transition-all ${
+              className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-1.5 rounded-full font-medium transition-all text-center ${
                 activeTab === 'cargas'
                   ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold shadow-sm'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <Dumbbell className="w-3.5 h-3.5" />
-              <span>Cargas de ejercicio</span>
+              <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Cargas</span>
             </button>
             <button
               onClick={() => setActiveTab('pesoCorporal')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-medium transition-all ${
+              className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-1.5 rounded-full font-medium transition-all text-center ${
                 activeTab === 'pesoCorporal'
                   ? 'bg-[var(--accent-primary)] text-[#0D1117] font-semibold shadow-sm'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <Scale className="w-3.5 h-3.5" />
-              <span>Peso corporal</span>
+              <Scale className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Peso corporal</span>
             </button>
           </div>
 
           {/* Action Buttons */}
           {activeTab === 'cargas' ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <StartWorkoutButton variant="primary" />
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-stretch sm:justify-start">
+              <div className="flex-1 sm:flex-initial">
+                <StartWorkoutButton variant="primary" className="w-full sm:w-auto justify-center" />
+              </div>
               <button
                 onClick={handleOpenCreateProgreso}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/50 text-xs font-semibold font-inter active:scale-95 transition-all cursor-pointer"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/50 text-xs font-semibold font-inter active:scale-95 transition-all cursor-pointer whitespace-nowrap"
                 title="Registro manual rápido"
               >
-                <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                <Plus className="w-3.5 h-3.5 strokeWidth={2.5}" />
                 <span>Registro rápido</span>
               </button>
             </div>
           ) : (
             <button
               onClick={handleOpenCreatePeso}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-primary)] text-[#0D1117] font-semibold text-xs tracking-wide hover:brightness-105 active:scale-95 transition-all font-inter cursor-pointer"
             >
-              <Plus className="w-4 h-4" strokeWidth={2.5} />
-              Registrar pesaje
+              <Plus className="w-4 h-4 strokeWidth={2.5}" />
+              <span>Registrar pesaje</span>
             </button>
           )}
         </div>
@@ -517,7 +519,7 @@ export const ProgresoPage: React.FC = () => {
       {activeTab === 'cargas' ? (
         /* VISTA 1: CARGAS DE EJERCICIO */
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-5">
             {/* Tarjeta Récords recientes (reemplaza Carga máxima) */}
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group hover:border-[var(--accent-primary)]/40 transition-all">
               <div>
@@ -590,24 +592,24 @@ export const ProgresoPage: React.FC = () => {
           </div>
 
           {/* Gráfico de Progresión de Cargas */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
-              <div>
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 border-b border-[var(--border)]">
+              <div className="min-w-0">
                 <h2 className="text-sm font-bold text-[var(--text-primary)] font-space flex items-center gap-2 tracking-tight">
-                  <Activity className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
-                  Curva de progreso: {selectedExercise?.nombre || 'Ejercicio'}
+                  <Activity className="w-4 h-4 text-[var(--accent-primary)] shrink-0" strokeWidth={2} />
+                  <span className="truncate">Curva de progreso: {selectedExercise?.nombre || 'Ejercicio'}</span>
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
                   Progresión lineal de cargas (un ejercicio a la vez)
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-[var(--text-secondary)]" strokeWidth={2} />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="w-4 h-4 text-[var(--text-secondary)] shrink-0" strokeWidth={2} />
                 <select
                   value={filtroEjercicioId}
                   onChange={(e) => setFiltroEjercicioId(e.target.value)}
-                  className="px-3 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter cursor-pointer"
+                  className="w-full sm:w-auto px-3 py-1.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)] font-inter cursor-pointer truncate"
                 >
                   {distinctExercises.map((ej) => (
                     <option key={ej.id} value={ej.id}>
@@ -619,14 +621,14 @@ export const ProgresoPage: React.FC = () => {
             </div>
 
             {chartDataProgresos.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/40">
+              <div className="h-60 sm:h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/40 p-4 text-center">
                 <Dumbbell className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
                 <p className="text-xs font-inter">No hay datos suficientes para trazar la curva.</p>
               </div>
             ) : (
-              <div className="h-72 w-full">
+              <div className="h-64 sm:h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartDataProgresos} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
+                  <LineChart data={chartDataProgresos} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#2E343B" vertical={false} />
                     <XAxis dataKey="fecha" stroke="#A0A7B2" fontSize={11} tickLine={false} />
                     <YAxis stroke="#A0A7B2" fontSize={11} tickLine={false} unit="kg" />
@@ -657,7 +659,7 @@ export const ProgresoPage: React.FC = () => {
 
           {/* Tabla de Registros de Ejercicios */}
           <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+            <div className="p-4 sm:p-5 border-b border-[var(--border)] flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-[var(--text-primary)] font-space">
                   Bitácora de cargas de ejercicio
@@ -675,56 +677,108 @@ export const ProgresoPage: React.FC = () => {
                 No se han registrado sesiones de entrenamiento para este perfil todavía.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-[var(--text-primary)]">
-                  <thead className="bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] text-xs border-b border-[var(--border)] font-space">
-                    <tr>
-                      <th className="py-3 px-5 font-semibold">Fecha</th>
-                      <th className="py-3 px-5 font-semibold">Ejercicio</th>
-                      <th className="py-3 px-5 font-semibold text-center">Series</th>
-                      <th className="py-3 px-5 font-semibold text-center">Reps</th>
-                      <th className="py-3 px-5 font-semibold text-right">Peso (kg)</th>
-                      <th className="py-3 px-5 text-center font-semibold">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border)] font-inter">
-                    {filteredProgresos.map((p) => (
-                      <tr key={p.id} className="hover:bg-[var(--bg-primary)]/50 transition-colors">
-                        <td className="py-3.5 px-5 font-medium text-[var(--text-primary)] font-space tabular-nums">{p.fecha}</td>
-                        <td className="py-3.5 px-5 font-medium text-[var(--text-primary)]">
-                          <div className="flex items-center gap-2">
-                            <Dumbbell className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
-                            <span>{p.ejercicioNombre}</span>
+              <>
+                {/* Vista Móvil: Tarjetas compactas */}
+                <div className="block md:hidden divide-y divide-[var(--border)] font-inter">
+                  {filteredProgresos.map((p) => (
+                    <div key={p.id} className="p-3.5 sm:p-4 hover:bg-[var(--bg-primary)]/40 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                          <div className="w-8 h-8 rounded-xl bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border border-[var(--accent-primary)]/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <Dumbbell className="w-4 h-4" strokeWidth={2} />
                           </div>
-                        </td>
-                        <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.seriesRealizadas}</td>
-                        <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.repeticionesRealizadas}</td>
-                        <td className="py-3.5 px-5 text-right font-bold text-[var(--accent-primary)] font-space tabular-nums">
-                          {p.pesoRealizado || 0} kg
-                        </td>
-                        <td className="py-3.5 px-5 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-semibold text-xs sm:text-sm text-[var(--text-primary)] font-space truncate">
+                              {p.ejercicioNombre}
+                            </h4>
+                            <div className="flex items-center gap-1.5 mt-1 text-[11px] text-[var(--text-secondary)] font-inter flex-wrap">
+                              <span className="font-space tabular-nums text-[var(--text-primary)] font-semibold">
+                                {p.seriesRealizadas} series × {p.repeticionesRealizadas} reps
+                              </span>
+                              <span>•</span>
+                              <span className="tabular-nums">{p.fecha}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <span className="font-bold font-space text-[var(--accent-primary)] text-sm tabular-nums">
+                            {p.pesoRealizado || 0} kg
+                          </span>
+                          <div className="flex items-center gap-0.5">
                             <button
                               onClick={() => handleOpenEditProgreso(p)}
-                              className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] p-1.5 rounded-lg hover:bg-[var(--accent-primary)]/10 transition-colors cursor-pointer"
+                              className="p-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors cursor-pointer"
                               title="Editar registro"
                             >
-                              <Pencil className="w-4 h-4" strokeWidth={2} />
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => deleteProgresoMutation.mutate(p.id)}
-                              className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1.5 rounded-lg hover:bg-[var(--accent-error)]/10 transition-colors cursor-pointer"
+                              className="p-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 transition-colors cursor-pointer"
                               title="Eliminar registro"
                             >
-                              <Trash2 className="w-4 h-4" strokeWidth={2} />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                        </td>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Vista Escritorio / Tablet: Tabla completa */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                    <thead className="bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] text-xs border-b border-[var(--border)] font-space">
+                      <tr>
+                        <th className="py-3 px-5 font-semibold">Fecha</th>
+                        <th className="py-3 px-5 font-semibold">Ejercicio</th>
+                        <th className="py-3 px-5 font-semibold text-center">Series</th>
+                        <th className="py-3 px-5 font-semibold text-center">Reps</th>
+                        <th className="py-3 px-5 font-semibold text-right">Peso (kg)</th>
+                        <th className="py-3 px-5 text-center font-semibold">Acciones</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)] font-inter">
+                      {filteredProgresos.map((p) => (
+                        <tr key={p.id} className="hover:bg-[var(--bg-primary)]/50 transition-colors">
+                          <td className="py-3.5 px-5 font-medium text-[var(--text-primary)] font-space tabular-nums">{p.fecha}</td>
+                          <td className="py-3.5 px-5 font-medium text-[var(--text-primary)]">
+                            <div className="flex items-center gap-2">
+                              <Dumbbell className="w-4 h-4 text-[var(--accent-primary)]" strokeWidth={2} />
+                              <span>{p.ejercicioNombre}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.seriesRealizadas}</td>
+                          <td className="py-3.5 px-5 text-center font-space tabular-nums">{p.repeticionesRealizadas}</td>
+                          <td className="py-3.5 px-5 text-right font-bold text-[var(--accent-primary)] font-space tabular-nums">
+                            {p.pesoRealizado || 0} kg
+                          </td>
+                          <td className="py-3.5 px-5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditProgreso(p)}
+                                className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] p-1.5 rounded-lg hover:bg-[var(--accent-primary)]/10 transition-colors cursor-pointer"
+                                title="Editar registro"
+                              >
+                                <Pencil className="w-4 h-4" strokeWidth={2} />
+                              </button>
+                              <button
+                                onClick={() => deleteProgresoMutation.mutate(p.id)}
+                                className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1.5 rounded-lg hover:bg-[var(--accent-error)]/10 transition-colors cursor-pointer"
+                                title="Eliminar registro"
+                              >
+                                <Trash2 className="w-4 h-4" strokeWidth={2} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </>
@@ -767,12 +821,12 @@ export const ProgresoPage: React.FC = () => {
           </div>
 
           {/* Gráfico de Evolución de Peso Corporal */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 border-b border-[var(--border)]">
               <div>
                 <h2 className="text-sm font-bold text-[var(--text-primary)] font-space flex items-center gap-2 tracking-tight">
-                  <Scale className="w-4 h-4 text-[#38bdf8]" strokeWidth={2} />
-                  Curva de seguimiento de peso corporal (kg)
+                  <Scale className="w-4 h-4 text-[#38bdf8] shrink-0" strokeWidth={2} />
+                  <span>Curva de seguimiento de peso corporal (kg)</span>
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)] font-inter mt-0.5">
                   Evolución cronológica de masa corporal
@@ -781,7 +835,7 @@ export const ProgresoPage: React.FC = () => {
 
               <button
                 onClick={handleOpenCreatePeso}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-xs text-[var(--text-primary)] hover:border-[var(--accent-primary)] transition-all font-inter"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-xs text-[var(--text-primary)] hover:border-[var(--accent-primary)] transition-all font-inter cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
                 <span>Nuevo pesaje</span>
@@ -789,7 +843,7 @@ export const ProgresoPage: React.FC = () => {
             </div>
 
             {chartDataPesos.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/40">
+              <div className="h-60 sm:h-64 flex flex-col items-center justify-center text-[var(--text-secondary)] border border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/40 p-4 text-center">
                 <Scale className="w-8 h-8 text-[var(--text-secondary)] mb-2" strokeWidth={1.5} />
                 <p className="text-xs font-inter">No hay registros de peso corporal todavía.</p>
                 <button
@@ -800,9 +854,9 @@ export const ProgresoPage: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="h-72 w-full">
+              <div className="h-64 sm:h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartDataPesos} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
+                  <AreaChart data={chartDataPesos} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="bodyWeightPageGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
@@ -839,7 +893,7 @@ export const ProgresoPage: React.FC = () => {
 
           {/* Tabla de Historial de Peso Corporal */}
           <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+            <div className="p-4 sm:p-5 border-b border-[var(--border)] flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-[var(--text-primary)] font-space">
                   Tabla de seguimiento de peso corporal
@@ -857,73 +911,135 @@ export const ProgresoPage: React.FC = () => {
                 No hay pesajes registrados en el histórico de este atleta.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-[var(--text-primary)]">
-                  <thead className="bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] text-xs border-b border-[var(--border)] font-space">
-                    <tr>
-                      <th className="py-3 px-5 font-semibold">Fecha</th>
-                      <th className="py-3 px-5 font-semibold text-right">Peso registrado</th>
-                      <th className="py-3 px-5 font-semibold text-center">Variación</th>
-                      <th className="py-3 px-5 font-semibold">Notas / Observaciones</th>
-                      <th className="py-3 px-5 text-center font-semibold">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border)] font-inter">
-                    {historialPesos.map((pesoItem, idx) => {
-                      const sig = historialPesos[idx + 1];
-                      const diff = sig ? Number((pesoItem.peso - sig.peso).toFixed(1)) : null;
-                      return (
-                        <tr key={pesoItem.id} className="hover:bg-[var(--bg-primary)]/50 transition-colors">
-                          <td className="py-3.5 px-5 font-medium text-[var(--text-primary)] font-space tabular-nums">
-                            {pesoItem.fecha}
-                          </td>
-                          <td className="py-3.5 px-5 text-right font-bold text-[#38bdf8] font-space tabular-nums text-sm">
-                            {pesoItem.peso} kg
-                          </td>
-                          <td className="py-3.5 px-5 text-center font-space tabular-nums">
-                            {diff !== null ? (
-                              <span className={`inline-flex items-center gap-1 font-semibold text-xs ${diff > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                {diff > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                                {diff > 0 ? `+${diff}` : `${diff}`} kg
-                              </span>
-                            ) : (
-                              <span className="text-[var(--text-secondary)] text-[11px] font-normal">Inicial</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-5 text-[var(--text-secondary)] font-inter">
-                            {pesoItem.notas ? (
-                              <span className="flex items-center gap-1.5">
-                                <FileText className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" />
-                                <span>{pesoItem.notas}</span>
-                              </span>
-                            ) : (
-                              <span className="text-[var(--text-secondary)]/50 italic">Sin observaciones</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-5 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => handleOpenEditPeso(pesoItem)}
-                                className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] p-1 transition-colors cursor-pointer"
-                                title="Editar pesaje"
-                              >
-                                <Pencil className="w-4 h-4" strokeWidth={2} />
-                              </button>
-                              <button
-                                onClick={() => deletePesoMutation.mutate(pesoItem.id)}
-                                className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors cursor-pointer"
-                                title="Eliminar pesaje"
-                              >
-                                <Trash2 className="w-4 h-4" strokeWidth={2} />
-                              </button>
+              <>
+                {/* Vista Móvil: Lista de pesajes */}
+                <div className="block md:hidden divide-y divide-[var(--border)] font-inter">
+                  {historialPesos.map((pesoItem, idx) => {
+                    const sig = historialPesos[idx + 1];
+                    const diff = sig ? Number((pesoItem.peso - sig.peso).toFixed(1)) : null;
+                    return (
+                      <div key={pesoItem.id} className="p-3.5 sm:p-4 hover:bg-[var(--bg-primary)]/40 transition-colors">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            <div className="w-8 h-8 rounded-lg bg-[#38bdf8]/10 text-[#38bdf8] border border-[#38bdf8]/20 flex items-center justify-center shrink-0 mt-0.5">
+                              <Scale className="w-4 h-4" strokeWidth={2} />
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-sm text-[#38bdf8] font-space tabular-nums">
+                                  {pesoItem.peso} kg
+                                </span>
+                                {diff !== null ? (
+                                  <span className={`inline-flex items-center gap-0.5 font-semibold text-xs ${diff > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                    {diff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                    {diff > 0 ? `+${diff}` : `${diff}`} kg
+                                  </span>
+                                ) : (
+                                  <span className="text-[var(--text-secondary)] text-[10px] font-space">Inicial</span>
+                                )}
+                              </div>
+                              <div className="mt-1 text-xs text-[var(--text-secondary)] font-inter">
+                                <span className="tabular-nums font-space text-[11px]">{pesoItem.fecha}</span>
+                                {pesoItem.notas && (
+                                  <p className="text-[11px] text-[var(--text-secondary)] italic mt-0.5 line-clamp-1">
+                                    "{pesoItem.notas}"
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              onClick={() => handleOpenEditPeso(pesoItem)}
+                              className="p-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors cursor-pointer"
+                              title="Editar pesaje"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => deletePesoMutation.mutate(pesoItem.id)}
+                              className="p-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 transition-colors cursor-pointer"
+                              title="Eliminar pesaje"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Vista Escritorio / Tablet: Tabla completa */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs text-[var(--text-primary)]">
+                    <thead className="bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] text-xs border-b border-[var(--border)] font-space">
+                      <tr>
+                        <th className="py-3 px-5 font-semibold">Fecha</th>
+                        <th className="py-3 px-5 font-semibold text-right">Peso registrado</th>
+                        <th className="py-3 px-5 font-semibold text-center">Variación</th>
+                        <th className="py-3 px-5 font-semibold">Notas / Observaciones</th>
+                        <th className="py-3 px-5 text-center font-semibold">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)] font-inter">
+                      {historialPesos.map((pesoItem, idx) => {
+                        const sig = historialPesos[idx + 1];
+                        const diff = sig ? Number((pesoItem.peso - sig.peso).toFixed(1)) : null;
+                        return (
+                          <tr key={pesoItem.id} className="hover:bg-[var(--bg-primary)]/50 transition-colors">
+                            <td className="py-3.5 px-5 font-medium text-[var(--text-primary)] font-space tabular-nums">
+                              {pesoItem.fecha}
+                            </td>
+                            <td className="py-3.5 px-5 text-right font-bold text-[#38bdf8] font-space tabular-nums text-sm">
+                              {pesoItem.peso} kg
+                            </td>
+                            <td className="py-3.5 px-5 text-center font-space tabular-nums">
+                              {diff !== null ? (
+                                <span className={`inline-flex items-center gap-1 font-semibold text-xs ${diff > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                  {diff > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                  {diff > 0 ? `+${diff}` : `${diff}`} kg
+                                </span>
+                              ) : (
+                                <span className="text-[var(--text-secondary)] text-[11px] font-normal">Inicial</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-5 text-[var(--text-secondary)] font-inter">
+                              {pesoItem.notas ? (
+                                <span className="flex items-center gap-1.5">
+                                  <FileText className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" />
+                                  <span>{pesoItem.notas}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[var(--text-secondary)]/50 italic">Sin observaciones</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-5 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleOpenEditPeso(pesoItem)}
+                                  className="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] p-1 transition-colors cursor-pointer"
+                                  title="Editar pesaje"
+                                >
+                                  <Pencil className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                                <button
+                                  onClick={() => deletePesoMutation.mutate(pesoItem.id)}
+                                  className="text-[var(--text-secondary)] hover:text-[var(--accent-error)] p-1 transition-colors cursor-pointer"
+                                  title="Eliminar pesaje"
+                                >
+                                  <Trash2 className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </>
@@ -1059,7 +1175,7 @@ export const ProgresoPage: React.FC = () => {
             <label className="block text-[11px] font-medium text-[var(--text-secondary)] font-inter mb-1.5">
               Percepción de esfuerzo (Opcional)
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
                 { key: undefined, label: 'Sin especificar' },
                 { key: 'FACIL', label: 'Fácil' },
@@ -1072,7 +1188,7 @@ export const ProgresoPage: React.FC = () => {
                     key={opt.label}
                     type="button"
                     onClick={() => setValueProgreso('esfuerzo', opt.key as any)}
-                    className={`py-1.5 px-2 rounded-xl text-xs font-inter border transition-all cursor-pointer ${
+                    className={`py-2 sm:py-1.5 px-2 rounded-xl text-xs font-inter border transition-all cursor-pointer text-center ${
                       isSelected
                         ? 'bg-[var(--accent-primary)]/15 border-[var(--accent-primary)] text-[var(--accent-primary)] font-bold'
                         : 'bg-[var(--bg-primary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-white'
@@ -1085,18 +1201,18 @@ export const ProgresoPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-3">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all"
+              className="w-full sm:w-auto px-5 py-2.5 sm:py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all text-center"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={createProgresoMutation.isPending || updateProgresoMutation.isPending || yaRegistrado}
-              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter cursor-pointer"
+              className="w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter cursor-pointer text-center"
             >
               {editingProgresoId
                 ? (updateProgresoMutation.isPending ? 'Actualizando...' : 'Guardar cambios')

@@ -993,28 +993,34 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden transition-colors hover:border-[var(--border)]/80">
       {/* Top Bar of Card */}
       <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--accent-primary)] flex items-center justify-center shrink-0">
+        {/* Left Side: Icon + Info */}
+        <div className="flex items-start gap-3.5 flex-1 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--accent-primary)] flex items-center justify-center shrink-0 mt-0.5">
             <Dumbbell className="w-5 h-5" strokeWidth={2} />
           </div>
-          <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h3 className="text-base font-bold text-[var(--text-primary)] font-space tracking-tight">{rutina.nombre}</h3>
-              <Badge type="status" value={rutina.activa} />
-              {rutina.generadaPorIa && (
-                <Badge type="ai-generated" />
-              )}
-              {hasAiAdjustment && (
-                <Badge type="ai" label="Ajuste de cargas IA" />
-              )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-bold text-[var(--text-primary)] font-space tracking-tight">
+                {rutina.nombre}
+              </h3>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge type="status" value={rutina.activa} />
+                {rutina.generadaPorIa && (
+                  <Badge type="ai-generated" />
+                )}
+                {hasAiAdjustment && (
+                  <Badge type="ai" label="Ajuste de cargas IA" />
+                )}
+              </div>
             </div>
-            <p className="text-xs text-[var(--text-secondary)] font-inter mt-1">
+            <p className="text-xs text-[var(--text-secondary)] font-inter mt-1.5 leading-relaxed">
               {rutina.descripcion || 'Sin descripción asignada'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap self-end sm:self-center">
+        {/* Right Side: Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0 sm:flex-nowrap flex-wrap self-start sm:self-center">
           {/* Botón Empezar / Continuar rutina específico de la tarjeta */}
           <StartWorkoutButton variant="card" specificRoutine={rutina} />
 
@@ -1022,7 +1028,7 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
           <button
             onClick={onToggleStatus}
             title={rutina.activa ? 'Desactivar rutina' : 'Activar rutina'}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold font-space flex items-center gap-1.5 border transition-all active:scale-95 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold font-space flex items-center gap-1.5 border transition-all active:scale-95 shrink-0 ${
               rutina.activa
                 ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border-[var(--accent-primary)]/40 hover:bg-[var(--accent-primary)]/20'
                 : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--text-primary)]'
@@ -1035,14 +1041,14 @@ const RutinaItem: React.FC<RutinaItemProps> = ({
           <button
             onClick={onDelete}
             title="Eliminar rutina"
-            className="p-2 rounded-full bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 border border-[var(--border)] transition-colors active:scale-95"
+            className="p-2 rounded-full bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 border border-[var(--border)] transition-colors active:scale-95 shrink-0"
           >
             <Trash2 className="w-4 h-4" strokeWidth={2} />
           </button>
 
           <button
             onClick={onToggleExpand}
-            className="px-4 py-1.5 rounded-full bg-[var(--bg-primary)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/40 border border-[var(--border)] transition-colors flex items-center gap-1.5 text-xs font-semibold font-inter active:scale-95"
+            className="px-3.5 py-1.5 rounded-full bg-[var(--bg-primary)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/40 border border-[var(--border)] transition-colors flex items-center gap-1.5 text-xs font-semibold font-inter active:scale-95 shrink-0"
           >
             <span>Ejercicios</span>
             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" strokeWidth={2} /> : <ChevronDown className="w-3.5 h-3.5" strokeWidth={2} />}

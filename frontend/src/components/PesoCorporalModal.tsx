@@ -284,18 +284,18 @@ export const PesoCorporalModal: React.FC<PesoCorporalModalProps> = ({
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-3">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all cursor-pointer"
+              className="w-full sm:w-auto px-5 py-2.5 sm:py-2 rounded-full bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] text-xs font-semibold font-inter active:scale-95 transition-all cursor-pointer text-center"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saveMutation.isPending || pendingConfirmation}
-              className="px-6 py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter cursor-pointer"
+              className="w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-full bg-[var(--accent-primary)] text-[#0D1117] text-xs font-semibold tracking-wide hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 font-inter cursor-pointer text-center"
             >
               {saveMutation.isPending
                 ? 'Guardando...'
