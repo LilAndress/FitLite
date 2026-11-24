@@ -142,10 +142,11 @@ public class GeminiChatService {
     }
 
     private String llamarGeminiApi(String systemInstruction, List<MensajeChat> historial, String nuevoMensaje) throws Exception {
-        String endpointUrl = String.format(
-                "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
-                modelName, apiKey.trim()
-        );
+        List<String> modelos = new ArrayList<>();
+        modelos.add(modelName);
+        if (!modelos.contains("gemini-3.6-flash")) modelos.add("gemini-3.6-flash");
+        if (!modelos.contains("gemini-flash-lite-latest")) modelos.add("gemini-flash-lite-latest");
+        if (!modelos.contains("gemini-3.5-flash")) modelos.add("gemini-3.5-flash");
 
         ObjectNode rootNode = objectMapper.createObjectNode();
 
@@ -170,12 +171,17 @@ public class GeminiChatService {
         // Configuración de generación
         ObjectNode generationConfig = rootNode.putObject("generationConfig");
         generationConfig.put("temperature", 0.7);
-        generationConfig.put("maxOutputTokens", 1200);
+        generationConfig.put("maxOutputTokens", 4096);
 
         String jsonPayload = objectMapper.writeValueAsString(rootNode);
 
-        int maxAttempts = 3;
-        for (int intento = 1; intento <= maxAttempts; intento++) {
+        for (int intento = 0; intento < modelos.size(); intento++) {
+            String modeloActual = modelos.get(intento);
+            String endpointUrl = String.format(
+                    "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
+                    modeloActual, apiKey.trim()
+            );
+
             try {
                 String rawResponse = restClient.post()
                         .uri(endpointUrl)
@@ -203,14 +209,9 @@ public class GeminiChatService {
                 return "No obtuve una respuesta clara del modelo. Por favor reformula tu pregunta.";
             } catch (RestClientResponseException e) {
                 int status = e.getStatusCode().value();
-                if ((status == 503 || status == 429) && intento < maxAttempts) {
-                    log.warn("Gemini Chat API devolvió {} en intento {}/{}. Reintentando en {}s...", status, intento, maxAttempts, intento);
-                    try {
-                        Thread.sleep(1200L * intento);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw e;
-                    }
+                if ((status == 503 || status == 429) && intento < modelos.size() - 1) {
+                    log.warn("Gemini Chat API ({}) devolvió {}. Conmutando automáticamente a modelo alternativo: {}...",
+                            modeloActual, status, modelos.get(intento + 1));
                     continue;
                 }
                 throw e;

@@ -217,10 +217,11 @@ public class RutinaIaService {
     }
 
     private String llamarGeminiApi(String systemInstruction, String userMessage) throws Exception {
-        String endpointUrl = String.format(
-                "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
-                modelName, apiKey.trim()
-        );
+        List<String> modelos = new ArrayList<>();
+        modelos.add(modelName);
+        if (!modelos.contains("gemini-3.6-flash")) modelos.add("gemini-3.6-flash");
+        if (!modelos.contains("gemini-flash-lite-latest")) modelos.add("gemini-flash-lite-latest");
+        if (!modelos.contains("gemini-3.5-flash")) modelos.add("gemini-3.5-flash");
 
         ObjectNode rootNode = objectMapper.createObjectNode();
 
@@ -239,13 +240,18 @@ public class RutinaIaService {
         // Generation config
         ObjectNode generationConfig = rootNode.putObject("generationConfig");
         generationConfig.put("temperature", 0.7);
-        generationConfig.put("maxOutputTokens", 2048);
+        generationConfig.put("maxOutputTokens", 8192);
         generationConfig.put("responseMimeType", "application/json");
 
         String jsonPayload = objectMapper.writeValueAsString(rootNode);
 
-        int maxAttempts = 3;
-        for (int intento = 1; intento <= maxAttempts; intento++) {
+        for (int intento = 0; intento < modelos.size(); intento++) {
+            String modeloActual = modelos.get(intento);
+            String endpointUrl = String.format(
+                    "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
+                    modeloActual, apiKey.trim()
+            );
+
             try {
                 String rawResponse = restClient.post()
                         .uri(endpointUrl)
@@ -273,21 +279,16 @@ public class RutinaIaService {
                 throw new RuntimeException("No se obtuvo una respuesta válida del modelo de IA.");
             } catch (org.springframework.web.client.RestClientResponseException e) {
                 int status = e.getStatusCode().value();
-                if ((status == 503 || status == 429) && intento < maxAttempts) {
-                    log.warn("Gemini API devolvió {} en intento {}/{}. Reintentando en {}s...", status, intento, maxAttempts, intento);
-                    try {
-                        Thread.sleep(1200L * intento);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw e;
-                    }
+                if ((status == 503 || status == 429) && intento < modelos.size() - 1) {
+                    log.warn("Gemini API ({}) devolvió {}. Conmutando automáticamente a modelo alternativo: {}...",
+                            modeloActual, status, modelos.get(intento + 1));
                     continue;
                 }
                 throw e;
             }
         }
 
-        throw new RuntimeException("No se obtuvo una respuesta válida del modelo de IA.");
+        throw new RuntimeException("No se obtuvo una respuesta válida del modelo de IA tras consultar todos los modelos disponibles.");
     }
 
     private RutinaIaBorradorResponseDTO parsearBorrador(String rawJson) {
