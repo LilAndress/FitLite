@@ -174,26 +174,46 @@ public class GeminiChatService {
 
         String jsonPayload = objectMapper.writeValueAsString(rootNode);
 
-        String rawResponse = restClient.post()
-                .uri(endpointUrl)
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .body(jsonPayload)
-                .retrieve()
-                .body(String.class);
+        int maxAttempts = 3;
+        for (int intento = 1; intento <= maxAttempts; intento++) {
+            try {
+                String rawResponse = restClient.post()
+                        .uri(endpointUrl)
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .body(jsonPayload)
+                        .retrieve()
+                        .body(String.class);
 
-        JsonNode responseTree = objectMapper.readTree(rawResponse);
-        JsonNode candidates = responseTree.path("candidates");
-        if (candidates.isArray() && !candidates.isEmpty()) {
-            JsonNode firstCandidate = candidates.get(0);
-            JsonNode parts = firstCandidate.path("content").path("parts");
-            if (parts.isArray() && !parts.isEmpty()) {
-                StringBuilder respuestaFinal = new StringBuilder();
-                for (JsonNode part : parts) {
-                    if (part.has("text")) {
-                        respuestaFinal.append(part.get("text").asText());
+                JsonNode responseTree = objectMapper.readTree(rawResponse);
+                JsonNode candidates = responseTree.path("candidates");
+                if (candidates.isArray() && !candidates.isEmpty()) {
+                    JsonNode firstCandidate = candidates.get(0);
+                    JsonNode parts = firstCandidate.path("content").path("parts");
+                    if (parts.isArray() && !parts.isEmpty()) {
+                        StringBuilder respuestaFinal = new StringBuilder();
+                        for (JsonNode part : parts) {
+                            if (part.has("text")) {
+                                respuestaFinal.append(part.get("text").asText());
+                            }
+                        }
+                        return respuestaFinal.toString();
                     }
                 }
-                return respuestaFinal.toString();
+
+                return "No obtuve una respuesta clara del modelo. Por favor reformula tu pregunta.";
+            } catch (RestClientResponseException e) {
+                int status = e.getStatusCode().value();
+                if ((status == 503 || status == 429) && intento < maxAttempts) {
+                    log.warn("Gemini Chat API devolvió {} en intento {}/{}. Reintentando en {}s...", status, intento, maxAttempts, intento);
+                    try {
+                        Thread.sleep(1200L * intento);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                    continue;
+                }
+                throw e;
             }
         }
 

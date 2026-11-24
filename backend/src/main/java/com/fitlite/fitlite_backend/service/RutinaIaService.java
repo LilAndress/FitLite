@@ -82,6 +82,16 @@ public class RutinaIaService {
         try {
             String rawJson = llamarGeminiApi(systemInstruction, userPrompt);
             return parsearBorrador(rawJson);
+        } catch (com.fitlite.fitlite_backend.exception.ServicioIaIndisponibleException e) {
+            throw e;
+        } catch (org.springframework.web.client.RestClientResponseException e) {
+            log.error("Error al generar borrador IA para usuario {}: {} - {}", request.getUsuarioId(), e.getStatusCode(), e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 503 || e.getStatusCode().value() == 429) {
+                throw new com.fitlite.fitlite_backend.exception.ServicioIaIndisponibleException(
+                        "El motor de Inteligencia Artificial está experimentando alta demanda en este momento. Por favor, reintenta en unos instantes.");
+            }
+            throw new com.fitlite.fitlite_backend.exception.ServicioIaIndisponibleException(
+                    "Ocurrió un inconveniente temporal comunicándonos con el servicio de IA. Intenta nuevamente en unos instantes.");
         } catch (Exception e) {
             log.error("Error al generar borrador IA para usuario {}: {}", request.getUsuarioId(), e.getMessage(), e);
             throw new RuntimeException("No pudimos generar la rutina en este momento. Intenta nuevamente.", e);
@@ -234,26 +244,46 @@ public class RutinaIaService {
 
         String jsonPayload = objectMapper.writeValueAsString(rootNode);
 
-        String rawResponse = restClient.post()
-                .uri(endpointUrl)
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .body(jsonPayload)
-                .retrieve()
-                .body(String.class);
+        int maxAttempts = 3;
+        for (int intento = 1; intento <= maxAttempts; intento++) {
+            try {
+                String rawResponse = restClient.post()
+                        .uri(endpointUrl)
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .body(jsonPayload)
+                        .retrieve()
+                        .body(String.class);
 
-        JsonNode responseTree = objectMapper.readTree(rawResponse);
-        JsonNode candidates = responseTree.path("candidates");
-        if (candidates.isArray() && !candidates.isEmpty()) {
-            JsonNode firstCandidate = candidates.get(0);
-            JsonNode partsNode = firstCandidate.path("content").path("parts");
-            if (partsNode.isArray() && !partsNode.isEmpty()) {
-                StringBuilder respuestaFinal = new StringBuilder();
-                for (JsonNode part : partsNode) {
-                    if (part.has("text")) {
-                        respuestaFinal.append(part.get("text").asText());
+                JsonNode responseTree = objectMapper.readTree(rawResponse);
+                JsonNode candidates = responseTree.path("candidates");
+                if (candidates.isArray() && !candidates.isEmpty()) {
+                    JsonNode firstCandidate = candidates.get(0);
+                    JsonNode partsNode = firstCandidate.path("content").path("parts");
+                    if (partsNode.isArray() && !partsNode.isEmpty()) {
+                        StringBuilder respuestaFinal = new StringBuilder();
+                        for (JsonNode part : partsNode) {
+                            if (part.has("text")) {
+                                respuestaFinal.append(part.get("text").asText());
+                            }
+                        }
+                        return respuestaFinal.toString();
                     }
                 }
-                return respuestaFinal.toString();
+
+                throw new RuntimeException("No se obtuvo una respuesta válida del modelo de IA.");
+            } catch (org.springframework.web.client.RestClientResponseException e) {
+                int status = e.getStatusCode().value();
+                if ((status == 503 || status == 429) && intento < maxAttempts) {
+                    log.warn("Gemini API devolvió {} en intento {}/{}. Reintentando en {}s...", status, intento, maxAttempts, intento);
+                    try {
+                        Thread.sleep(1200L * intento);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                    continue;
+                }
+                throw e;
             }
         }
 
